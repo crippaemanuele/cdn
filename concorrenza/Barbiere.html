@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Barbiere che Dorme</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <div class="max-w-5xl mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Il Barbiere che Dorme</h1>
+                <p class="text-slate-500 italic">Simulazione interattiva del problema di concorrenza</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="toggleSim" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                    <span id="simBtnText">Simulazione Auto</span>
+                </button>
+                <button id="toggleView" class="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition font-medium">
+                    Mostra Codice Java
+                </button>
+            </div>
+        </header>
+
+        <!-- Sezione Simulazione -->
+        <div id="simulationView" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Area Lavoro Barbiere -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold flex items-center gap-2">✂️ Postazione Taglio</h2>
+                        <span id="barberStatus" class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-100 text-slate-500">
+                            Zzz... Sta dormendo
+                        </span>
+                    </div>
+                    <div class="h-48 flex items-center justify-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                        <div id="barberVisual" class="text-center">
+                            <!-- Icona dinamica qui -->
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="text-5xl opacity-30">☕</span>
+                                <p class="text-slate-400 text-sm">Il barbiere riposa</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sala d'Attesa -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-semibold flex items-center gap-2">🪑 Sala d'Attesa</h2>
+                        <div class="text-sm font-medium text-slate-500">
+                            Sedie Libere: <span id="seatCount" class="text-blue-600 font-bold">3</span> / 3
+                        </div>
+                    </div>
+                    <div id="waitingRoom" class="grid grid-cols-3 gap-4">
+                        <!-- Sedie generate via JS -->
+                    </div>
+                </div>
+
+                <!-- Azioni -->
+                <div class="flex gap-4">
+                    <button id="addCustomer" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">
+                        🚪 Arriva un Cliente
+                    </button>
+                    <button id="resetBtn" class="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition">
+                        🔄
+                    </button>
+                </div>
+            </div>
+
+            <!-- Console Log -->
+            <div class="bg-slate-900 rounded-2xl p-6 text-slate-300 font-mono text-sm h-[500px] flex flex-col shadow-xl">
+                <h3 class="text-slate-500 uppercase text-xs font-bold tracking-widest mb-4 border-b border-slate-800 pb-2">Log di Sistema (Thread)</h3>
+                <div id="logContainer" class="space-y-2 overflow-y-auto flex-1 custom-scrollbar">
+                    <div class="text-green-400">> Negozio aperto. In attesa...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Codice (Nascosta inizialmente) -->
+        <div id="codeView" class="hidden bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700">
+            <div class="bg-slate-800 px-6 py-3 border-b border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="ml-2 text-slate-400 text-sm font-mono tracking-tight">BarberShop.java</span>
+                </div>
+            </div>
+            <pre class="p-6 overflow-x-auto text-sm leading-relaxed text-slate-300 font-mono">
+<code>// Logica di Sincronizzazione tramite Semafori
+import java.util.concurrent.Semaphore;
+
+class BarberShop {
+    private int freeSeats = 3;
+    
+    // Mutex per proteggere la variabile freeSeats
+    private final Semaphore mutex = new Semaphore(1);
+    // Segnala la presenza di clienti al barbiere
+    private final Semaphore customers = new Semaphore(0);
+    // Segnala che il barbiere è pronto per il cliente
+    private final Semaphore barber = new Semaphore(0);
+
+    public void getHaircut(int id) throws InterruptedException {
+        mutex.acquire(); // Entra in sezione critica
+
+        if (freeSeats > 0) {
+            freeSeats--; // Occupa una sedia
+            System.out.println("Cliente " + id + " si siede.");
+            
+            customers.release(); // Sveglia il barbiere
+            mutex.release();     // Esci da sezione critica
+            
+            barber.acquire();    // Aspetta che il barbiere chiami
+            System.out.println("Cliente " + id + " servito.");
+        } else {
+            mutex.release();     // Sala piena, vai via
+            System.out.println("Cliente " + id + " lascia il negozio.");
+        }
+    }
+
+    public void cutHair() throws InterruptedException {
+        customers.acquire(); // Dorme se non ci sono clienti
+        
+        mutex.acquire();
+        freeSeats++;         // Libera la sedia d'attesa
+        barber.release();    // Pronto a servire
+        mutex.release();
+
+        // Taglio in corso...
+        Thread.sleep(3000); 
+    }
+}</code></pre>
+        </div>
+    </div>
+
+    <script>
+        // Stato Applicazione
+        let freeSeats = 3;
+        const totalChairs = 3;
+        let waitingCustomers = [];
+        let currentCustomer = null;
+        let isBarberSleeping = true;
+        let nextCustomerId = 1;
+        let simRunning = false;
+        let autoSimInterval = null;
+
+        // Elementi DOM
+        const logContainer = document.getElementById('logContainer');
+        const seatCount = document.getElementById('seatCount');
+        const barberStatus = document.getElementById('barberStatus');
+        const barberVisual = document.getElementById('barberVisual');
+        const waitingRoom = document.getElementById('waitingRoom');
+        const simulationView = document.getElementById('simulationView');
+        const codeView = document.getElementById('codeView');
+        const toggleViewBtn = document.getElementById('toggleView');
+        const toggleSimBtn = document.getElementById('toggleSim');
+        const addCustomerBtn = document.getElementById('addCustomer');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Funzioni Helper
+        function addLog(msg, isSuccess = false) {
+            const div = document.createElement('div');
+            div.className = `flex gap-2 ${isSuccess ? 'text-green-400' : 'opacity-70'}`;
+            div.innerHTML = `<span class="text-slate-700 font-bold">></span><span>${msg}</span>`;
+            logContainer.prepend(div);
+        }
+
+        function updateUI() {
+            seatCount.innerText = freeSeats;
+            
+            // Aggiorna Sala d'Attesa
+            waitingRoom.innerHTML = '';
+            for (let i = 0; i < totalChairs; i++) {
+                const customerId = waitingCustomers[i];
+                const chair = document.createElement('div');
+                chair.className = `h-32 rounded-xl border-2 flex flex-col items-center justify-center transition-all duration-300 ${customerId ? 'bg-amber-50 border-amber-200 text-amber-600 scale-105' : 'bg-slate-50 border-slate-100 text-slate-300 opacity-50'}`;
+                chair.innerHTML = customerId ? 
+                    `<span class="text-3xl">👤</span><span class="text-xs font-bold mt-2">Cliente #${customerId}</span>` : 
+                    `<span class="text-3xl">🪑</span>`;
+                waitingRoom.appendChild(chair);
+            }
+
+            // Aggiorna Barbiere
+            if (isBarberSleeping) {
+                barberStatus.innerText = "Zzz... Sta dormendo";
+                barberStatus.className = "px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-100 text-slate-500";
+                barberVisual.innerHTML = `
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="relative">
+                            <span class="text-5xl opacity-40">☕</span>
+                            <span class="absolute -top-2 -right-2 text-xl font-bold text-blue-400 animate-bounce">Zzz</span>
+                        </div>
+                        <p class="text-slate-400 text-sm">Il barbiere riposa</p>
+                    </div>
+                `;
+            } else {
+                barberStatus.innerText = "Lavorando";
+                barberStatus.className = "px-3 py-1 rounded-full text-xs font-bold uppercase bg-green-100 text-green-700 animate-pulse";
+                barberVisual.innerHTML = `
+                    <div class="flex flex-col items-center gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="p-4 bg-blue-100 rounded-full text-blue-600 animate-spin-slow">✂️</div>
+                            <div class="h-10 w-px bg-slate-200"></div>
+                            <div class="p-4 bg-orange-100 rounded-full text-orange-600 text-2xl">👤</div>
+                        </div>
+                        <p class="font-bold text-slate-700">Taglio: Cliente #${currentCustomer}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function processNext() {
+            if (!isBarberSleeping || waitingCustomers.length === 0) return;
+
+            // Logica Barbiere si sveglia
+            isBarberSleeping = false;
+            currentCustomer = waitingCustomers.shift();
+            freeSeats++;
+            addLog(`Il barbiere si sveglia per Cliente #${currentCustomer}`, true);
+            updateUI();
+
+            // Simula durata taglio
+            setTimeout(() => {
+                addLog(`Taglio terminato per Cliente #${currentCustomer}`);
+                currentCustomer = null;
+                
+                if (waitingCustomers.length === 0) {
+                    isBarberSleeping = true;
+                    addLog("Nessun cliente. Il barbiere torna a dormire.");
+                } else {
+                    // Prendi il prossimo subito
+                    currentCustomer = waitingCustomers.shift();
+                    freeSeats++;
+                    addLog(`Prossimo cliente servito: #${currentCustomer}`, true);
+                }
+                updateUI();
+                if (currentCustomer) processNext(); // Loop se c'è ancora qualcuno
+            }, 3000);
+        }
+
+        // Eventi
+        addCustomerBtn.onclick = () => {
+            const id = nextCustomerId++;
+            addLog(`Arrivo Cliente #${id}`);
+            if (freeSeats > 0) {
+                freeSeats--;
+                waitingCustomers.push(id);
+                addLog(`Cliente #${id} si siede in attesa`);
+                updateUI();
+                if (isBarberSleeping) processNext();
+            } else {
+                addLog(`Cliente #${id} va via: sala piena!`);
+            }
+            updateUI();
+        };
+
+        toggleViewBtn.onclick = () => {
+            const isCode = codeView.classList.contains('hidden');
+            codeView.classList.toggle('hidden');
+            simulationView.classList.toggle('hidden');
+            toggleViewBtn.innerText = isCode ? "Mostra Simulazione" : "Mostra Codice Java";
+        };
+
+        toggleSimBtn.onclick = () => {
+            simRunning = !simRunning;
+            if (simRunning) {
+                toggleSimBtn.className = "flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-medium transition";
+                document.getElementById('simBtnText').innerText = "Ferma Auto";
+                autoSimInterval = setInterval(() => {
+                    if (Math.random() > 0.6) addCustomerBtn.click();
+                }, 4000);
+            } else {
+                toggleSimBtn.className = "flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium";
+                document.getElementById('simBtnText').innerText = "Simulazione Auto";
+                clearInterval(autoSimInterval);
+            }
+        };
+
+        resetBtn.onclick = () => {
+            location.reload();
+        };
+
+        // Init
+        updateUI();
+    </script>
+</body>
+</html>
