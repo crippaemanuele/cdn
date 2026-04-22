@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Filosofi a Tavola</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .philosopher {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fork {
+            transition: all 0.3s ease;
+        }
+
+        .status-thinking { background-color: #3b82f6; border-color: #1d4ed8; }
+        .status-hungry { background-color: #f59e0b; border-color: #b45309; animation: pulse 1.5s infinite; }
+        .status-eating { background-color: #10b981; border-color: #047857; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .code-container {
+            font-family: 'Fira Code', monospace;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold">Problema dei Filosofi a Tavola</h1>
+                <p class="text-slate-400">Visualizzazione interattiva della concorrenza</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="startBtn" onclick="toggleSimulation()" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-2 rounded-full font-bold transition-all flex items-center gap-2">
+                    <span>Avvia Simulazione</span>
+                </button>
+                <button onclick="resetSimulation()" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Simulazione Visiva -->
+            <div class="lg:col-span-7 bg-slate-800 rounded-3xl p-8 border border-slate-700 relative shadow-2xl h-[500px] flex flex-col">
+                <div id="table-container" class="relative flex-grow flex items-center justify-center">
+                    <!-- Il Tavolo -->
+                    <div class="w-64 h-64 bg-slate-900/50 rounded-full border-4 border-slate-700 flex items-center justify-center relative">
+                        <span class="text-slate-600 font-mono text-xs uppercase tracking-widest">Risorsa Condivisa</span>
+                    </div>
+
+                    <!-- Le Bacchette verranno generate da JS -->
+                    <div id="forks-layer"></div>
+                    
+                    <!-- I Filosofi verranno generati da JS -->
+                    <div id="philosophers-layer"></div>
+                </div>
+
+                <!-- Log Console -->
+                <div class="mt-4 bg-black/40 rounded-xl p-4 font-mono text-[10px] border border-white/5 h-24 overflow-y-auto" id="console">
+                    <div class="text-slate-500 mb-1 uppercase tracking-tighter">Eventi di Sincronizzazione:</div>
+                    <div id="log-content"></div>
+                </div>
+            </div>
+
+            <!-- Codice e Spiegazione -->
+            <div class="lg:col-span-5 space-y-4">
+                <div class="bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+                    <div class="bg-slate-800 px-4 py-2 border-b border-slate-700 text-xs font-mono text-emerald-400 flex justify-between">
+                        <span>PhilosopherLogic.java</span>
+                        <span class="text-slate-500">Read-only</span>
+                    </div>
+                    <div class="p-4 code-container text-xs leading-relaxed text-blue-300">
+<pre>
+<span class="text-slate-500">// Implementazione Thread-Safe</span>
+<span class="text-pink-400">public void</span> run() {
+  <span class="text-pink-400">while</span>(<span class="text-pink-400">true</span>) {
+    pensare(); 
+
+    <span class="text-slate-500">// Scelta dell'ordine delle bacchette
+    // per evitare l'attesa circolare (Deadlock)</span>
+    <span class="text-pink-400">int</span> primo = id;
+    <span class="text-pink-400">int</span> secondo = (id + 1) % 5;
+
+    <span class="text-slate-500">// Se è l'ultimo filosofo, inverte l'ordine</span>
+    <span class="text-pink-400">if</span> (id == 4) {
+        primo = (id + 1) % 5;
+        secondo = id;
+    }
+
+    <span class="text-pink-400">synchronized</span>(forks[primo]) {
+      <span class="text-pink-400">synchronized</span>(forks[secondo]) {
+        mangiare(); <span class="text-slate-500">// Sezione Critica</span>
+      }
+    }
+  }
+}
+</pre>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-2xl p-5 border border-slate-700 text-sm">
+                    <h3 class="font-bold mb-2 text-white flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Gestione del Conflitto
+                    </h3>
+                    <p class="text-slate-400 mb-3">La simulazione utilizza una <b>gerarchia delle risorse</b> per prevenire il deadlock. </p>
+                    <ul class="space-y-2 text-xs text-slate-300">
+                        <li class="flex gap-2">
+                            <span class="text-emerald-400">✔</span>
+                            <span><b>Mutua Esclusione:</b> Solo un filosofo può tenere una bacchetta.</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-emerald-400">✔</span>
+                            <span><b>No Deadlock:</b> L'ultimo filosofo (ID 4) rompe la simmetria prendendo le bacchette in ordine inverso.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione
+        const NUM_PHILOSOPHERS = 5;
+        let isRunning = false;
+        
+        // Stato dell'applicazione
+        const philosophers = [];
+        const forks = new Array(NUM_PHILOSOPHERS).fill(false); // false = libera
+
+        // Inizializzazione Filosofi
+        function init() {
+            const philLayer = document.getElementById('philosophers-layer');
+            const forkLayer = document.getElementById('forks-layer');
+            
+            for (let i = 0; i < NUM_PHILOSOPHERS; i++) {
+                // Crea Filosofo
+                const phil = {
+                    id: i,
+                    status: 'THINKING', // THINKING, HUNGRY, EATING
+                    meals: 0,
+                    timer: null
+                };
+                philosophers.push(phil);
+
+                // Elemento DOM Filosofo
+                const div = document.createElement('div');
+                div.id = `phil-${i}`;
+                div.className = `philosopher absolute w-16 h-16 rounded-full border-4 border-slate-900 flex flex-col items-center justify-center text-[10px] font-bold status-thinking`;
+                
+                const pos = getCircularPos(i, 160);
+                div.style.left = `calc(50% + ${pos.x}px - 32px)`;
+                div.style.top = `calc(50% + ${pos.y}px - 32px)`;
+                div.innerHTML = `<span>ID: ${i}</span><span id="meals-${i}">0</span>`;
+                philLayer.appendChild(div);
+
+                // Elemento DOM Bacchetta
+                const fDiv = document.createElement('div');
+                fDiv.id = `fork-${i}`;
+                fDiv.className = `fork absolute w-1 h-12 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.5)]`;
+                
+                const fPos = getCircularPos(i + 0.5, 90);
+                fDiv.style.left = `calc(50% + ${fPos.x}px - 2px)`;
+                fDiv.style.top = `calc(50% + ${fPos.y}px - 24px)`;
+                fDiv.style.transform = `rotate(${i * 72 + 36}deg)`;
+                forkLayer.appendChild(fDiv);
+            }
+        }
+
+        function getCircularPos(index, radius) {
+            const angle = (index * 72 - 90) * (Math.PI / 180);
+            return {
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius
+            };
+        }
+
+        function addLog(msg) {
+            const content = document.getElementById('log-content');
+            const div = document.createElement('div');
+            div.className = "mb-1 text-slate-300";
+            div.innerHTML = `<span class="text-slate-600">[${new Date().toLocaleTimeString()}]</span> > ${msg}`;
+            content.prepend(div);
+            if (content.childNodes.length > 20) content.lastChild.remove();
+        }
+
+        function updatePhilUI(id) {
+            const phil = philosophers[id];
+            const el = document.getElementById(`phil-${id}`);
+            el.className = `philosopher absolute w-16 h-16 rounded-full border-4 border-slate-900 flex flex-col items-center justify-center text-[10px] font-bold status-${phil.status.toLowerCase()}`;
+            document.getElementById(`meals-${id}`).innerText = phil.meals;
+        }
+
+        function updateForkUI(id) {
+            const taken = forks[id];
+            const el = document.getElementById(`fork-${id}`);
+            if (taken) {
+                el.style.opacity = "0.2";
+                el.style.transform += " scale(0.8)";
+            } else {
+                el.style.opacity = "1";
+                el.style.transform = el.style.transform.replace(" scale(0.8)", "");
+            }
+        }
+
+        // --- Logica di Simulazione ---
+
+        async function philosopherCycle(id) {
+            if (!isRunning) return;
+
+            const phil = philosophers[id];
+
+            // 1. Pensare
+            phil.status = 'THINKING';
+            updatePhilUI(id);
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+
+            // 2. Diventare Affamato
+            if (!isRunning) return;
+            phil.status = 'HUNGRY';
+            updatePhilUI(id);
+            addLog(`Filosofo ${id} ha fame.`);
+
+            // 3. Tentare di prendere le bacchette
+            const left = id;
+            const right = (id + 1) % NUM_PHILOSOPHERS;
+
+            // Strategia Anti-Deadlock
+            let primo = left;
+            let secondo = right;
+            if (id === NUM_PHILOSOPHERS - 1) {
+                primo = right;
+                secondo = left;
+            }
+
+            while (isRunning) {
+                if (!forks[primo] && !forks[secondo]) {
+                    // Prende entrambe (atomico nella simulazione JS)
+                    forks[primo] = true;
+                    forks[secondo] = true;
+                    updateForkUI(primo);
+                    updateForkUI(secondo);
+                    break;
+                }
+                await new Promise(r => setTimeout(r, 500)); // Aspetta e riprova
+            }
+
+            if (!isRunning) return;
+
+            // 4. Mangiare
+            phil.status = 'EATING';
+            addLog(`Filosofo ${id} sta mangiando...`);
+            updatePhilUI(id);
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+
+            // 5. Rilasciare risorse
+            forks[left] = false;
+            forks[right] = false;
+            updateForkUI(left);
+            updateForkUI(right);
+            phil.meals++;
+            addLog(`Filosofo ${id} ha finito.`);
+            
+            // Ricomincia ciclo
+            philosopherCycle(id);
+        }
+
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('startBtn');
+            if (isRunning) {
+                btn.innerHTML = '<span>Ferma Simulazione</span>';
+                btn.classList.replace('bg-emerald-600', 'bg-red-600');
+                btn.classList.replace('hover:bg-emerald-700', 'hover:bg-red-700');
+                for (let i = 0; i < NUM_PHILOSOPHERS; i++) {
+                    philosopherCycle(i);
+                }
+            } else {
+                btn.innerHTML = '<span>Avvia Simulazione</span>';
+                btn.classList.replace('bg-red-600', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-red-700', 'hover:bg-emerald-700');
+            }
+        }
+
+        function resetSimulation() {
+            isRunning = false;
+            location.reload(); // Il modo più semplice per resettare lo stato dei thread
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

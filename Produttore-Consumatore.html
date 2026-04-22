@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Produttore-Consumatore</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f1f5f9;
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
+        .active-line {
+            background-color: rgba(59, 130, 246, 0.5);
+            color: white;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .active-line-cons {
+            background-color: rgba(34, 197, 94, 0.5);
+            color: white;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .buffer-slot {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+        }
+
+        .ptr-active {
+            animation: pulse-ring 2s infinite;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
+                    Produttore - Consumatore
+                </h1>
+                <p class="text-slate-400 text-sm">Visualizzazione Concorrenza con Semafori (Mutex, Empty, Full)</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-start" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-xl font-bold transition flex items-center gap-2">
+                    <span>Avvia</span>
+                </button>
+                <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-2 rounded-xl font-bold transition">
+                    Reset
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Sidebar: Stato e Semafori -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                    <h2 class="text-sm font-bold text-slate-500 uppercase mb-4 tracking-widest">Semafori</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-black rounded-lg border border-slate-800">
+                            <span class="text-amber-400 font-bold text-xs uppercase">Mutex</span>
+                            <span id="sem-mutex" class="text-xl font-mono font-bold">1</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-black rounded-lg border border-slate-800">
+                            <span class="text-blue-400 font-bold text-xs uppercase">Empty</span>
+                            <span id="sem-empty" class="text-xl font-mono font-bold">8</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-black rounded-lg border border-slate-800">
+                            <span class="text-green-400 font-bold text-xs uppercase">Full</span>
+                            <span id="sem-full" class="text-xl font-mono font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                    <h2 class="text-sm font-bold text-slate-500 uppercase mb-4 tracking-widest">Velocità</h2>
+                    <input type="range" id="speed-range" min="200" max="2500" value="1200" class="w-full accent-blue-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-2">
+                        <span>Lento</span>
+                        <span>Veloce</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl overflow-hidden">
+                    <h2 class="text-sm font-bold text-slate-500 uppercase mb-3 tracking-widest">Attività Log</h2>
+                    <div id="log-container" class="text-[11px] font-mono space-y-2 h-40 overflow-y-auto pr-2">
+                        <div class="text-slate-500 italic">In attesa...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Panel -->
+            <div class="lg:col-span-9 space-y-8">
+                
+                <!-- Buffer Visivo -->
+                <div class="bg-slate-900 border border-slate-800 p-10 rounded-3xl relative">
+                    <h3 class="text-center text-xs font-bold text-slate-500 uppercase tracking-[0.3em] mb-10">Buffer Circolare Condiviso</h3>
+                    <div id="buffer-container" class="flex flex-wrap justify-center gap-4">
+                        <!-- Generato via JS -->
+                    </div>
+                </div>
+
+                <!-- Codice Sorgente Interattivo -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Produttore Code -->
+                    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-blue-400">Thread Produttore</h3>
+                            <span id="state-prod" class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/30 font-bold uppercase">IDLE</span>
+                        </div>
+                        <pre class="code-font text-xs leading-relaxed opacity-80" id="code-prod">
+<div data-state="IDLE">while(true) {</div>
+<div data-state="PRODUCING">  item = produce_item();</div>
+<div data-state="WAIT_EMPTY">  P(empty);</div>
+<div data-state="WAIT_MUTEX">  P(mutex);</div>
+<div data-state="INSERTING">  buffer.insert(item);</div>
+<div data-state="SIGNAL">  V(mutex);</div>
+<div data-state="SIGNAL">  V(full);</div>
+<div>}</div></pre>
+                    </div>
+
+                    <!-- Consumatore Code -->
+                    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-green-400">Thread Consumatore</h3>
+                            <span id="state-cons" class="text-[10px] bg-green-500/10 text-green-400 px-2 py-1 rounded border border-green-500/30 font-bold uppercase">IDLE</span>
+                        </div>
+                        <pre class="code-font text-xs leading-relaxed opacity-80" id="code-cons">
+<div data-state="IDLE">while(true) {</div>
+<div data-state="WAIT_FULL">  P(full);</div>
+<div data-state="WAIT_MUTEX">  P(mutex);</div>
+<div data-state="EXTRACTING">  item = buffer.remove();</div>
+<div data-state="SIGNAL">  V(mutex);</div>
+<div data-state="SIGNAL">  V(empty);</div>
+<div data-state="CONSUMING">  consume_item(item);</div>
+<div>}</div></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurazione
+        const BUFFER_SIZE = 8;
+        let buffer = new Array(BUFFER_SIZE).fill(null);
+        let inPtr = 0;
+        let outPtr = 0;
+        
+        let mutex = 1;
+        let empty = BUFFER_SIZE;
+        let full = 0;
+
+        let prodState = 'IDLE';
+        let consState = 'IDLE';
+        
+        let isRunning = false;
+        let intervalId = null;
+
+        // Elementi DOM
+        const bufferContainer = document.getElementById('buffer-container');
+        const logContainer = document.getElementById('log-container');
+        
+        // Inizializza Buffer Visivo
+        function initBuffer() {
+            bufferContainer.innerHTML = '';
+            for (let i = 0; i < BUFFER_SIZE; i++) {
+                const slot = document.createElement('div');
+                slot.id = `slot-${i}`;
+                slot.className = `w-16 h-16 md:w-20 md:h-20 border-2 border-slate-800 rounded-2xl flex items-center justify-center relative buffer-slot`;
+                slot.innerHTML = `<span class="absolute -top-6 text-[10px] text-slate-600 font-mono">idx: ${i}</span>`;
+                bufferContainer.appendChild(slot);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            // Update Semafori
+            document.getElementById('sem-mutex').textContent = mutex;
+            document.getElementById('sem-mutex').className = `text-xl font-mono font-bold ${mutex === 0 ? 'text-red-500' : 'text-green-500'}`;
+            document.getElementById('sem-empty').textContent = empty;
+            document.getElementById('sem-full').textContent = full;
+
+            // Update Stati
+            document.getElementById('state-prod').textContent = prodState;
+            document.getElementById('state-cons').textContent = consState;
+
+            // Update Buffer Visivo
+            for (let i = 0; i < BUFFER_SIZE; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                
+                // Pulisce classi puntatori
+                slot.classList.remove('ring-2', 'ring-blue-500', 'ring-green-500', 'ring-offset-4', 'ring-offset-slate-900', 'ptr-active');
+                
+                // Rimuove etichette IN/OUT precedenti
+                const oldIn = slot.querySelector('.label-in'); if (oldIn) oldIn.remove();
+                const oldOut = slot.querySelector('.label-out'); if (oldOut) oldOut.remove();
+
+                if (i === inPtr) {
+                    slot.classList.add('ring-2', 'ring-blue-500', 'ring-offset-4', 'ring-offset-slate-900', 'ptr-active');
+                    slot.insertAdjacentHTML('beforeend', '<span class="label-in absolute -bottom-6 text-[10px] text-blue-400 font-bold">IN</span>');
+                }
+                if (i === outPtr) {
+                    slot.classList.add('ring-2', 'ring-green-500', 'ring-offset-4', 'ring-offset-slate-900', 'ptr-active');
+                    slot.insertAdjacentHTML('beforeend', '<span class="label-out absolute -bottom-6 text-[10px] text-green-400 font-bold">OUT</span>');
+                }
+
+                // Elemento interno
+                if (buffer[i]) {
+                    if (!slot.querySelector('.item-box')) {
+                        slot.innerHTML += `<div class="item-box w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg transform scale-100 transition-transform"><span class="text-[9px] font-bold">ITM-${buffer[i]}</span></div>`;
+                        slot.classList.add('bg-slate-800/50');
+                    }
+                } else {
+                    const item = slot.querySelector('.item-box');
+                    if (item) item.remove();
+                    slot.classList.remove('bg-slate-800/50');
+                }
+            }
+
+            // Update Highlights Codice
+            document.querySelectorAll('#code-prod div').forEach(el => {
+                el.classList.toggle('active-line', el.dataset.state === prodState);
+            });
+            document.querySelectorAll('#code-cons div').forEach(el => {
+                el.classList.toggle('active-line-cons', el.dataset.state === consState);
+            });
+        }
+
+        function addLog(msg, type) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const logEntry = document.createElement('div');
+            logEntry.className = `p-1 border-l-2 mb-1 ${type === 'prod' ? 'border-blue-500 text-blue-300 bg-blue-500/5' : 'border-green-500 text-green-300 bg-green-500/5'}`;
+            logEntry.innerHTML = `<span class="opacity-40">[${time}]</span> ${msg}`;
+            logContainer.prepend(logEntry);
+            if (logContainer.childNodes.length > 20) logContainer.lastChild.remove();
+        }
+
+        // Logica Simulazione
+        function step() {
+            // Decidiamo casualmente quale thread far avanzare per simulare l'asincronia
+            const moveProducer = Math.random() > 0.5;
+
+            if (moveProducer) {
+                // FSM Produttore
+                switch(prodState) {
+                    case 'IDLE': 
+                        prodState = 'PRODUCING'; 
+                        addLog("Produttore: Sto creando un nuovo elemento...", "prod");
+                        break;
+                    case 'PRODUCING':
+                        prodState = 'WAIT_EMPTY';
+                        addLog("Produttore: Controllo se c'è spazio (P(empty))...", "prod");
+                        break;
+                    case 'WAIT_EMPTY':
+                        if (empty > 0) {
+                            empty--;
+                            prodState = 'WAIT_MUTEX';
+                            addLog("Produttore: Spazio trovato! Attendo il Mutex...", "prod");
+                        } else {
+                            addLog("Produttore: Buffer PIENO. Mi fermo.", "prod");
+                        }
+                        break;
+                    case 'WAIT_MUTEX':
+                        if (mutex === 1) {
+                            mutex = 0;
+                            prodState = 'INSERTING';
+                            addLog("Produttore: Accesso al buffer acquisito.", "prod");
+                        }
+                        break;
+                    case 'INSERTING':
+                        buffer[inPtr] = Math.floor(Math.random() * 99) + 1;
+                        inPtr = (inPtr + 1) % BUFFER_SIZE;
+                        prodState = 'SIGNAL';
+                        addLog("Produttore: Elemento inserito correttamente.", "prod");
+                        break;
+                    case 'SIGNAL':
+                        mutex = 1;
+                        full++;
+                        prodState = 'IDLE';
+                        addLog("Produttore: Segnalo nuovo dato (V(full)) e rilascio Mutex.", "prod");
+                        break;
+                }
+            } else {
+                // FSM Consumatore
+                switch(consState) {
+                    case 'IDLE':
+                        consState = 'WAIT_FULL';
+                        addLog("Consumatore: Cerco elementi da prelevare (P(full))...", "cons");
+                        break;
+                    case 'WAIT_FULL':
+                        if (full > 0) {
+                            full--;
+                            consState = 'WAIT_MUTEX';
+                            addLog("Consumatore: Dato presente! Attendo il Mutex...", "cons");
+                        } else {
+                            addLog("Consumatore: Buffer VUOTO. Mi fermo.", "cons");
+                        }
+                        break;
+                    case 'WAIT_MUTEX':
+                        if (mutex === 1) {
+                            mutex = 0;
+                            consState = 'EXTRACTING';
+                            addLog("Consumatore: Accesso al buffer acquisito.", "cons");
+                        }
+                        break;
+                    case 'EXTRACTING':
+                        buffer[outPtr] = null;
+                        outPtr = (outPtr + 1) % BUFFER_SIZE;
+                        consState = 'SIGNAL';
+                        addLog("Consumatore: Elemento prelevato.", "cons");
+                        break;
+                    case 'SIGNAL':
+                        mutex = 1;
+                        empty++;
+                        consState = 'CONSUMING';
+                        addLog("Consumatore: Segnalo spazio libero (V(empty)) e rilascio Mutex.", "cons");
+                        break;
+                    case 'CONSUMING':
+                        prodState === 'IDLE' ? null : null; // dummy
+                        consState = 'IDLE';
+                        addLog("Consumatore: Sto elaborando il dato...", "cons");
+                        break;
+                }
+            }
+            updateUI();
+        }
+
+        // Gestione Eventi
+        document.getElementById('btn-start').addEventListener('click', function() {
+            isRunning = !isRunning;
+            this.innerHTML = isRunning ? '<span>Pausa</span>' : '<span>Avvia</span>';
+            this.className = isRunning ? 'bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl font-bold transition' : 'bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-xl font-bold transition';
+            
+            if (isRunning) {
+                const speed = 2700 - document.getElementById('speed-range').value;
+                intervalId = setInterval(step, speed);
+            } else {
+                clearInterval(intervalId);
+            }
+        });
+
+        document.getElementById('speed-range').addEventListener('input', function() {
+            if (isRunning) {
+                clearInterval(intervalId);
+                const speed = 2700 - this.value;
+                intervalId = setInterval(step, speed);
+            }
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', function() {
+            location.reload();
+        });
+
+        // Avvio
+        initBuffer();
+    </script>
+</body>
+</html>
