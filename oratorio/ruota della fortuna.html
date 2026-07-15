@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Ruota della Fortuna - Edizione Custom</title>
+    <style>
+        :root {
+            --primary: #0d47a1;
+            --secondary: #ffb300;
+            --board-bg: #006064;
+            --cell-empty: #004d40;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e3f2fd;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 10px; }
+
+        /* PANNELLO ADMIN CREAZIONE QUESITI */
+        #admin-panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, button { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        input[type="text"] { flex-grow: 1; }
+        button { background: var(--primary); color: white; cursor: pointer; border: none; }
+        button:hover { background: #0a3680; }
+        
+        /* AREA DI GIOCO */
+        #game-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        /* TABELLONE REALE DEL GIOCO */
+        #board-section {
+            background: var(--board-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #category-display {
+            background: var(--secondary);
+            color: black;
+            font-weight: bold;
+            padding: 5px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        #board {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .cell {
+            width: 40px;
+            height: 50px;
+            background: white;
+            border: 2px solid #000;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .cell.hidden { background: #333; color: #333; }
+        .cell.space { background: transparent; border: none; width: 20px; }
+
+        /* RUOTA E CONTROLLI INTERFACCIA */
+        #wheel-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        #wheel-element {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            background: conic-gradient(red 0% 12%, orange 12% 25%, yellow 25% 37%, green 37% 50%, blue 50% 62%, indigo 62% 75%, violet 75% 87%, gold 87% 100%);
+            transition: transform 3s cubic-bezier(0.1, 0.8, 0.1, 1);
+            margin-bottom: 15px;
+        }
+        .wheel-pointer {
+            width: 0; height: 0; 
+            border-left: 10px solid transparent; border-right: 10px solid transparent;
+            border-bottom: 15px solid red; margin-bottom: -5px; z-index: 10;
+        }
+
+        /* STATISTICHE GIOCATORI */
+        .player-box {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 6px;
+            width: 100%;
+        }
+        .player-box.active {
+            border-color: var(--secondary);
+            background-color: #fff9c4;
+        }
+
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .key { padding: 10px 5px; font-weight: bold; cursor: pointer; background: #eee; border: 1px solid #ccc; border-radius: 4px; }
+        .key:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h1>La Ruota della Fortuna</h1>
+
+    <!-- 1. PANNELLO AMMINISTRATORE PER CREARE QUESITI -->
+    <div id="admin-panel">
+        <h3>Pannello di Controllo Manches (Admin)</h3>
+        <div class="form-group">
+            <input type="text" id="input-categoria" placeholder="Categoria (es. Cinema, Proverbi...)">
+            <input type="text" id="input-frase" placeholder="Frase Segreta da indovinare">
+            <button onclick="aggiungiFrase()">Aggiungi alla Coda</button>
+        </div>
+        <div>
+            <strong>Manches in Coda:</strong> <span id="manches-count">0</span>
+            <button onclick="avviaGioco()" style="background: green; margin-left:10px;">Avvia/Riavvia Gioco</button>
+        </div>
+    </div>
+
+    <!-- 2. INFRASTRUTTURA DI GIOCO -->
+    <div id="game-container" style="display: none;">
+        
+        <!-- Il Tabellone delle Lettere -->
+        <div id="board-section">
+            <div id="category-display">CATEGORIA</div>
+            <div id="board"></div>
+            
+            <div style="color: white; margin-bottom: 10px;">Chiamata Lettera / Risoluzione:</div>
+            <div id="keyboard"></div>
+            <button onclick="risolviFrase()" style="margin-top: 15px; background: #d32f2f; width: 100%;">RISOLVI LA FRASE</button>
+        </div>
+
+        <!-- La Ruota e i Giocatori -->
+        <div id="wheel-section">
+            <h3 id="round-title">Manche 1</h3>
+            <div class="wheel-pointer"></div>
+            <div id="wheel-element">GIRA</div>
+            <button id="spin-btn" onclick="giraRuota()" style="width: 100%; padding: 12px; font-size:16px; background:var(--secondary); color:black; font-weight:bold;">GIRA LA RUOTA</button>
+            <div id="wheel-result" style="margin-top: 10px; font-weight: bold; min-height: 20px;"></div>
+            
+            <hr style="width: 100%; margin: 20px 0;">
+            
+            <h4>Giocatori</h4>
+            <div id="player1" class="player-box active">Giocatore 1: <span id="p1-score">0</span> €</div>
+            <div id="player2" class="player-box">Giocatore 2: <span id="p2-score">0</span> €</div>
+            
+            <div id="game-status" style="margin-top: 15px; font-style: italic; color: #555;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Database delle manche caricate dall'utente
+        let databaseManches = [
+            { categoria: "PROVERBI", frase: "CHI DORME NON PIGLIA PESCI" },
+            { categoria: "CINEMA", frase: "RITORNO AL FUTURO" }
+        ];
+
+        const spicchiRuota = [100, 200, 300, 400, 500, "PASSA", 600, 700, "BANCAROTTA", 800, 900, 1000];
+        
+        let indiceMancheCorrente = 0;
+        let fraseCorrente = "";
+        let lettereIndovinate = [];
+        let punteggi = [0, 0]; // Giocatore 1 e Giocatore 2
+        let giocatoreAttivo = 0; // 0 = P1, 1 = P2
+        let valoreRuotaCorrente = 0;
+        let ruotaGirata = false;
+
+        // Aggiorna il contatore iniziale
+        document.getElementById('manches-count').innerText = databaseManches.length;
+
+        function aggiungiFrase() {
+            let cat = document.getElementById('input-categoria').value.trim().toUpperCase();
+            let frase = document.getElementById('input-frase').value.trim().toUpperCase();
+            
+            if(cat && frase) {
+                databaseManches.push({ categoria: cat, frase: frase });
+                document.getElementById('manches-count').innerText = databaseManches.length;
+                document.getElementById('input-categoria').value = "";
+                document.getElementById('input-frase').value = "";
+                alert("Manche aggiunta con successo!");
+            } else {
+                alert("Riempi entrambi i campi!");
+            }
+        }
+
+        function avviaGioco() {
+            if(databaseManches.length === 0) {
+                alert("Aggiungi almeno una frase prima di avviare!");
+                return;
+            }
+            indiceMancheCorrente = 0;
+            punteggi = [0, 0];
+            giocatoreAttivo = 0;
+            document.getElementById('game-container').style.display = 'grid';
+            caricaManche(indiceMancheCorrente);
+        }
+
+        function caricaManche(indice) {
+            if(indice >= databaseManches.length) {
+                alert(`Fine del gioco! Vincitore Finale: Giocatore ${punteggi[0] > punteggi[1] ? '1' : '2'} con ${Math.max(punteggi[0], punteggi[1])} €`);
+                return;
+            }
+
+            document.getElementById('round-title').innerText = `Manche ${indice + 1} di ${databaseManches.length}`;
+            fraseCorrente = databaseManches[indice].frase;
+            document.getElementById('category-display').innerText = databaseManches[indice].categoria;
+            lettereIndovinate = [];
+            ruotaGirata = false;
+            valoreRuotaCorrente = 0;
+            document.getElementById('wheel-result').innerText = "Gira la ruota per iniziare!";
+            
+            disegnaTabellone();
+            generaTastiera();
+            aggiornaGraficaTurno();
+        }
+
+        function disegnaTabellone() {
+            const board = document.getElementById('board');
+            board.innerHTML = "";
+            
+            for(let char of fraseCorrente) {
+                let cell = document.createElement('div');
+                if(char === " ") {
+                    cell.className = "cell space";
+                } else if(/[A-Z]/.test(char)) {
+                    if(lettereIndovinate.includes(char)) {
+                        cell.className = "cell";
+                        cell.innerText = char;
+                    } else {
+                        cell.className = "cell hidden";
+                        cell.innerText = "";
+                    }
+                } else { // Punteggiatura varia
+                    cell.className = "cell";
+                    cell.innerText = char;
+                }
+                board.appendChild(cell);
+            }
+        }
+
+        function generaTastiera() {
+            const tastiera = document.getElementById('keyboard');
+            tastiera.innerHTML = "";
+            const lettere = "ABCDEFGHILMNOPQRSTUVZ".split("");
+            
+            lettere.forEach(let => {
+                let btn = document.createElement('button');
+                btn.className = "key";
+                btn.innerText = let;
+                btn.onclick = () => chiamaLettera(let, btn);
+                tastiera.appendChild(btn);
+            });
+        }
+
+        function giraRuota() {
+            if(ruotaGirata) {
+                alert("Hai già girato la ruota! Scegli una lettera.");
+                return;
+            }
+
+            const ruotaEl = document.getElementById('wheel-element');
+            const randomDegrees = Math.floor(Math.random() * 360) + 1440; // Gira almeno 4 volte
+            ruotaEl.style.transform = `rotate(${randomDegrees}deg)`;
+
+            // Calcolo spicchio finale
+            const indiceSpicchio = Math.floor(Math.random() * spicchiRuota.length);
+            const risultato = spicchiRuota[indiceSpicchio];
+
+            setTimeout(() => {
+                document.getElementById('wheel-result').innerText = `Risultato: ${risultato} ${typeof risultato === 'number' ? '€' : ''}`;
+                
+                if(risultato === "BANCAROTTA") {
+                    punteggi[giocatoreAttivo] = 0;
+                    cambiaTurno("Bancarotta! Portafoglio azzerato e passa il turno.");
+                } else if(risultato === "PASSA") {
+                    cambiaTurno("Passa il turno!");
+                } else {
+                    valoreRuotaCorrente = risultato;
+                    ruotaGirata = true;
+                    document.getElementById('game-status').innerText = `Scegli una lettera della tastiera.`;
+                }
+                aggiornaGraficaTurno();
+            }, 3000);
+        }
+
+        function chiamaLettera(lettera, bottone) {
+            if(!ruotaGirata) {
+                alert("Devi prima girare la ruota!");
+                return;
+            }
+            
+            bottone.disabled = true;
+            ruotaGirata = false; // reset per il prossimo colpo
+
+            if(fraseCorrente.includes(lettera)) {
+                lettereIndovinate.push(lettera);
+                // Conta quante volte è presente la lettera
+                let occorrenze = fraseCorrente.split(lettera).length - 1;
+                let guadagno = valoreRuotaCorrente * occorrenze;
+                punteggi[giocatoreAttivo] += guadagno;
+                
+                document.getElementById('game-status').innerText = `Ottimo! C'è la lettera ${lettera} per ${occorrenze} volte (+${guadagno}€). Tocca ancora a te!`;
+                disegnaTabellone();
+                
+                // Controlla se la frase è stata completata automaticamente riempendo tutte le caselle
+                controllaFineMancheAutomatica();
+            } else {
+                cambiaTurno(`La lettera ${lettera} non è presente.`);
+            }
+            aggiornaGraficaTurno();
+        }
+
+        function cambiaTurno(messaggio) {
+            giocatoreAttivo = giocatoreAttivo === 0 ? 1 : 0;
+            ruotaGirata = false;
+            document.getElementById('game-status').innerText = `${messaggio} Passa la mano al Giocatore ${giocatoreAttivo + 1}.`;
+        }
+
+        function aggiornaGraficaTurno() {
+            document.getElementById('p1-score').innerText = punteggi[0];
+            document.getElementById('p2-score').innerText = punteggi[1];
+            
+            document.getElementById('player1').className = giocatoreAttivo === 0 ? "player-box active" : "player-box";
+            document.getElementById('player2').className = giocatoreAttivo === 1 ? "player-box active" : "player-box";
+        }
+
+        function controllaFineMancheAutomatica() {
+            let lettereMancanti = fraseCorrente.replace(/\s/g, "").split("").filter(char => !lettereIndovinate.includes(char) && /[A-Z]/.test(char));
+            if(lettereMancanti.length === 0) {
+                alert(`Manche Completata! Vince il Giocatore ${giocatoreAttivo + 1}`);
+                prossimaManche();
+            }
+        }
+
+        function risolviFrase() {
+            let tentativo = prompt("Inserisci la frase completa per risolvere (MAIUSCOLO):");
+            if(tentativo && tentativo.trim().toUpperCase() === fraseCorrente) {
+                alert(`Risposta Esatta! Il Giocatore ${giocatoreAttivo + 1} vince la manche! Bonus +2000 €`);
+                punteggi[giocatoreAttivo] += 2000;
+                prossimaManche();
+            } else {
+                alert("Risposta sbagliata! Passa il turno.");
+                cambiaTurno("Risoluzione fallita!");
+                aggiornaGraficaTurno();
+            }
+        }
+
+        function prossimaManche() {
+            indiceMancheCorrente++;
+            caricaManche(indiceMancheCorrente);
+        }
+    </script>
+</body>
+</html>
