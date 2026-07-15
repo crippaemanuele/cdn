@@ -1,0 +1,15 @@
+{
+  "titolo": "La Mia Catena Scolastica",
+  "premiIniziali": 150000,
+  "catena": [
+    "PRODOTTO",
+    "REGISTRO",
+    "TEMPO",
+    "BILANCIO",
+    "ENTRATE",
+    "NOTIZIA",
+    "PELLE",
+    "CONTROLLO",
+    "CARATTERE"
+  ]
+}
