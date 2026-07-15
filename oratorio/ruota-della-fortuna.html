@@ -43,10 +43,9 @@
         #setup-screen { display: block; }
         .setup-group { margin-bottom: 15px; }
         label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input[type="number"], input[type="text"], textarea {
+        input[type="number"], input[type="text"], input[type="file"] {
             width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;
         }
-        textarea { resize: vertical; font-family: monospace; }
         
         button {
             background: var(--primary); color: white; padding: 12px 20px; border: none; border-radius: 6px;
@@ -59,16 +58,34 @@
         .players-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
 
         /* AREA DI GIOCO */
-        #game-container { display: none; grid-template-columns: 2fr 1fr; gap: 25px; max-width: 1200px; }
+        #game-container { display: none; grid-template-columns: 2fr 1fr; gap: 25px; max-width: 1200px; width: 100%; }
 
         /* TABELLONE */
         #board-section { background: var(--primary-dark); padding: 20px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 30px rgba(0,0,0,0.6); }
         #category-display { background: var(--secondary); color: #333; font-weight: bold; font-size: 1.2rem; padding: 8px 25px; border-radius: 20px; margin-bottom: 20px; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         
-        #board { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 25px; background: var(--board-bg); padding: 15px; border-radius: 8px; border: 4px solid #00251a; width: 100%; min-height: 150px; }
+        /* Modificato per gestire l'andata a capo delle parole intere */
+        #board { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 15px; 
+            justify-content: center; 
+            background: var(--board-bg); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 4px solid #00251a; 
+            width: 100%; 
+            min-height: 150px; 
+        }
+        /* Contenitore per la singola parola */
+        .word {
+            display: flex;
+            gap: 5px;
+            /* Evita che le lettere all'interno della parola si separino */
+            flex-wrap: nowrap; 
+        }
         .cell { width: 45px; height: 60px; background: white; border: 2px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .cell.hidden { background: #00796b; border-color: #004d40; color: #00796b; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
-        .cell.space { background: transparent; border: none; box-shadow: none; width: 25px; }
 
         /* TASTIERA */
         #keyboard { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; width: 100%; margin-bottom: 15px; }
@@ -84,7 +101,6 @@
         
         #wheel-element {
             width: 220px; height: 220px; border-radius: 50%; border: 6px solid #333;
-            /* 12 spicchi da 30 gradi l'uno */
             background: conic-gradient(
                 #f44336 0deg 30deg, #e91e63 30deg 60deg, #9c27b0 60deg 90deg, 
                 #673ab7 90deg 120deg, #3f51b5 120deg 150deg, #2196f3 150deg 180deg, 
@@ -104,13 +120,62 @@
 
         #game-status { padding: 15px; background: #e3f2fd; border-left: 4px solid var(--primary); border-radius: 4px; font-weight: bold; margin-top: 15px; }
 
+        /* OVERLAY DI CAMBIO TURNO (SCHERMATA INTERMEDIA) */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none; /* Attivato via JS */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+        }
+        .overlay-content {
+            background: #1a237e;
+            padding: 40px;
+            border-radius: 16px;
+            border: 4px solid var(--secondary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .overlay-content h2 { color: var(--secondary); font-size: 2.2rem; margin-top: 0; margin-bottom: 15px; text-transform: uppercase; }
+        .overlay-content p { font-size: 1.3rem; margin: 15px 0; line-height: 1.5; }
+        .next-player-badge {
+            background: #4caf50;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: inline-block;
+            margin: 15px 0 25px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .overlay-content button {
+            background: var(--secondary);
+            color: #333;
+            font-size: 1.2rem;
+            padding: 15px 30px;
+        }
+        .overlay-content button:hover {
+            background: #ffd54f;
+        }
+
         /* CLASSIFICA FINALE */
         #end-screen { display: none; text-align: center; }
         .podium { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
         .podium-row { display: flex; justify-content: space-between; padding: 15px 25px; background: white; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .podium-row:nth-child(1) { background: #ffd700; color: #333; transform: scale(1.05); } /* Oro */
-        .podium-row:nth-child(2) { background: #e0e0e0; color: #333; } /* Argento */
-        .podium-row:nth-child(3) { background: #cd7f32; color: white; } /* Bronzo */
+        .podium-row:nth-child(1) { background: #ffd700; color: #333; transform: scale(1.05); } 
+        .podium-row:nth-child(2) { background: #e0e0e0; color: #333; } 
+        .podium-row:nth-child(3) { background: #cd7f32; color: white; } 
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
 
         @media (max-width: 800px) {
             #game-container { grid-template-columns: 1fr; }
@@ -121,7 +186,6 @@
 
     <h1>La Ruota della Fortuna</h1>
 
-    <!-- SCHERMATA DI IMPOSTAZIONE -->
     <div id="setup-screen" class="panel">
         <h2>Impostazioni Partita</h2>
         
@@ -130,24 +194,18 @@
             <input type="number" id="num-players" min="2" max="5" value="2" onchange="generaInputGiocatori()">
         </div>
         <div id="players-names-container" class="players-inputs">
-            <!-- Generato dinamicamente -->
-        </div>
+            </div>
 
         <div class="setup-group" style="margin-top: 20px;">
-            <label>Set di Quesiti (Formato JSON):</label>
-            <textarea id="json-input" rows="6">[
-  { "categoria": "PROVERBI", "frase": "CHI DORME NON PIGLIA PESCI" },
-  { "categoria": "CINEMA", "frase": "RITORNO AL FUTURO" },
-  { "categoria": "GEOGRAFIA", "frase": "IL MONTE BIANCO" }
-]</textarea>
+            <label>Carica Set di Quesiti (File .json):</label>
+            <input type="file" id="file-input" accept=".json" onchange="gestisciCaricamentoFile(event)">
+            <small style="display: block; color: #666; margin-top: 5px;">Carica il tuo file di testo contenente i quesiti in formato standard JSON.</small>
         </div>
 
-        <button onclick="avviaPartita()" style="background: #4caf50; font-size: 1.2rem; padding: 15px;">AVVIA LA PARTITA</button>
+        <button id="start-btn" onclick="avviaPartita()" style="background: #4caf50; font-size: 1.2rem; padding: 15px;" disabled>CARICA UN FILE PER AVVIARE</button>
     </div>
 
-    <!-- SCHERMATA DI GIOCO -->
     <div id="game-container">
-        <!-- Sinistra: Tabellone e Tastiera -->
         <div id="board-section">
             <h3 id="round-title" style="color: white; margin-top: 0;">Manche 1</h3>
             <div id="category-display">CATEGORIA</div>
@@ -157,7 +215,6 @@
             <button onclick="risolviFrase()" style="background: #d32f2f; margin-top: 10px;">TENTA LA RISOLUZIONE DEL TABELLONE</button>
         </div>
 
-        <!-- Destra: Ruota e Punteggi -->
         <div id="side-section">
             <div class="wheel-container">
                 <div class="wheel-pointer"></div>
@@ -167,14 +224,22 @@
             </div>
             
             <div class="players-container" id="players-list">
-                <!-- Generato dinamicamente -->
-            </div>
+                </div>
             
             <div id="game-status">Attendiamo l'inizio...</div>
         </div>
     </div>
 
-    <!-- SCHERMATA CLASSIFICA FINALE -->
+    <div id="turn-overlay" class="overlay">
+        <div class="overlay-content">
+            <h2>Cambio Turno!</h2>
+            <p id="overlay-reason">Motivo del cambio turno...</p>
+            <p>È il momento di passare la mano a:</p>
+            <div id="overlay-next-player" class="next-player-badge">Nome Giocatore</div>
+            <button onclick="chiudiOverlay()">CONTINUA IL GIOCO</button>
+        </div>
+    </div>
+
     <div id="end-screen" class="panel">
         <h2>Partita Conclusa!</h2>
         <h3 style="color: #666;">Ecco la classifica finale:</h3>
@@ -209,8 +274,38 @@
             }
         }
 
+        // Lettura asincrona del file JSON caricato
+        function gestisciCaricamentoFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    questions = JSON.parse(e.target.result);
+                    if(!Array.isArray(questions) || questions.length === 0) {
+                        throw new Error("Il file deve contenere una lista di quesiti.");
+                    }
+                    alert(`File caricato con successo! Rilevati ${questions.length} quesiti.`);
+                    const startBtn = document.getElementById('start-btn');
+                    startBtn.disabled = false;
+                    startBtn.innerText = "AVVIA LA PARTITA";
+                } catch(error) {
+                    alert("Errore di caricamento: il file fornito non è un file JSON valido o è formattato in modo errato.");
+                    event.target.value = ""; // Reset dell'input
+                    document.getElementById('start-btn').disabled = true;
+                }
+            };
+            reader.readAsText(file);
+        }
+
         function avviaPartita() {
-            // 1. Lettura Giocatori
+            if (questions.length === 0) {
+                alert("Per favore, carica un file JSON valido prima di iniziare.");
+                return;
+            }
+
+            // Lettura Giocatori
             const num = document.getElementById('num-players').value;
             players = [];
             for(let i = 1; i <= num; i++) {
@@ -218,17 +313,7 @@
                 players.push({ name: name, score: 0 });
             }
 
-            // 2. Lettura JSON Quesiti
-            try {
-                const jsonText = document.getElementById('json-input').value;
-                questions = JSON.parse(jsonText);
-                if(!Array.isArray(questions) || questions.length === 0) throw new Error("JSON vuoto o non valido");
-            } catch(e) {
-                alert("Errore nel formato JSON dei quesiti. Assicurati che sia scritto correttamente.");
-                return;
-            }
-
-            // 3. Avvio Interfaccia
+            // Avvio Interfaccia grafico di gioco
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-container').style.display = 'grid';
             
@@ -273,28 +358,36 @@
             aggiornaUI();
         }
 
+        // Modificato per racchiudere ogni parola in un tag che impedisce la rottura
         function disegnaTabellone() {
             const board = document.getElementById('board');
             board.innerHTML = "";
             
-            for(let char of fraseCorrente) {
-                let cell = document.createElement('div');
-                if(char === " ") {
-                    cell.className = "cell space";
-                } else if(/[A-Z]/.test(char)) {
-                    if(lettereIndovinate.includes(char)) {
-                        cell.className = "cell";
-                        cell.innerText = char;
+            // Spezziamo la frase in parole separate sfruttando lo spazio
+            const parole = fraseCorrente.split(" ");
+            
+            parole.forEach(parola => {
+                const wordDiv = document.createElement('div');
+                wordDiv.className = "word"; // Flex wrapper che non va a capo internamente
+                
+                for(let char of parola) {
+                    let cell = document.createElement('div');
+                    if(/[A-Z]/.test(char)) {
+                        if(lettereIndovinate.includes(char)) {
+                            cell.className = "cell";
+                            cell.innerText = char;
+                        } else {
+                            cell.className = "cell hidden";
+                            cell.innerText = "";
+                        }
                     } else {
-                        cell.className = "cell hidden";
-                        cell.innerText = ""; // Nascosta
+                        cell.className = "cell";
+                        cell.innerText = char; // Punteggiatura varia (es: apostrofi, trattini)
                     }
-                } else {
-                    cell.className = "cell";
-                    cell.innerText = char; // Punteggiatura mostrata di default
+                    wordDiv.appendChild(cell);
                 }
-                board.appendChild(cell);
-            }
+                board.appendChild(wordDiv);
+            });
         }
 
         function generaTastiera() {
@@ -322,15 +415,10 @@
             btn.disabled = true;
             document.getElementById('wheel-result').innerText = "Girando...";
 
-            // Calcolo rotazione fluida
             const prizeIndex = Math.floor(Math.random() * spicchiRuota.length);
             const degreesPerSegment = 360 / spicchiRuota.length;
-            
-            // L'angolo target per far arrivare lo spicchio vincente in alto (puntatore)
-            // Sottraiamo degreesPerSegment/2 per centrare lo spicchio
             const targetAngle = 360 - (prizeIndex * degreesPerSegment) - (degreesPerSegment / 2);
             
-            // Aggiungiamo 5 giri completi (1800 gradi) per l'animazione, e calcoliamo il nuovo accumulatore
             const spins = 5 * 360; 
             currentWheelRotation += spins + targetAngle - (currentWheelRotation % 360);
 
@@ -344,10 +432,10 @@
                 if(risultato === "BANCAROTTA") {
                     document.getElementById('wheel-result').innerText = "BANCAROTTA!";
                     players[currentPlayerIndex].score = 0;
-                    cambiaTurno("Bancarotta! Hai perso il montepremi e il turno.");
+                    cambiaTurno("BANCAROTTA! Hai perso l'intero montepremi accumulato in questa manche.");
                 } else if(risultato === "PASSA") {
                     document.getElementById('wheel-result').innerText = "PASSA IL TURNO!";
-                    cambiaTurno("Hai perso il turno!");
+                    cambiaTurno("Hai trovato il segmento PASSA IL TURNO.");
                 } else {
                     document.getElementById('wheel-result').innerText = `Valore: ${risultato} €`;
                     wheelValue = risultato;
@@ -355,7 +443,7 @@
                     setStatus(`${players[currentPlayerIndex].name}, scegli una lettera.`);
                 }
                 aggiornaUI();
-            }, 4100); // 4 sec animazione + 100ms margine
+            }, 4100); 
         }
 
         function chiamaLettera(lettera, bottone) {
@@ -365,7 +453,7 @@
             }
             
             bottone.disabled = true;
-            hasSpun = false; // Reset per la prossima mossa
+            hasSpun = false; 
 
             if(fraseCorrente.includes(lettera)) {
                 lettereIndovinate.push(lettera);
@@ -378,16 +466,32 @@
                 aggiornaUI();
                 controllaFineAutomatica();
             } else {
-                cambiaTurno(`La lettera ${lettera} NON è presente.`);
+                cambiaTurno(`La lettera '${lettera}' NON è presente sul tabellone.`);
             }
         }
 
+        // Cambiato per mostrare la schermata Overlay a tutto schermo
         function cambiaTurno(messaggioMotivo) {
             currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
             hasSpun = false;
+            
+            // Chiamata all'overlay
+            mostraOverlayTurno(messaggioMotivo, players[currentPlayerIndex].name);
+
             document.getElementById('wheel-result').innerText = `Tocca a ${players[currentPlayerIndex].name}.`;
             setStatus(`${messaggioMotivo} Il turno passa a ${players[currentPlayerIndex].name}.`);
             aggiornaUI();
+        }
+
+        // Gestione grafiche Overlay
+        function mostraOverlayTurno(motivo, prossimoGiocatore) {
+            document.getElementById('overlay-reason').innerText = motivo;
+            document.getElementById('overlay-next-player').innerText = prossimoGiocatore;
+            document.getElementById('turn-overlay').style.display = 'flex';
+        }
+
+        function chiudiOverlay() {
+            document.getElementById('turn-overlay').style.display = 'none';
         }
 
         function aggiornaUI() {
@@ -414,13 +518,14 @@
         }
 
         function risolviFrase() {
-            const tentativo = prompt("Inserisci l'intera frase per risolvere (non preoccuparti delle maiuscole/minuscole):");
+            const tentativo = prompt("Inserisci l'intera frase per risolvere (non importa maiuscole/minuscole):");
+            
+            // Sanitizzazione base per il confronto
             if(tentativo && tentativo.trim().toUpperCase() === fraseCorrente.replace(/[^A-Z\s]/g, "")) {
-                // Semplice sanitizzazione per confrontare solo lettere e spazi
                 vittoriaManche();
             } else if (tentativo !== null) {
                 alert("Sbagliato!");
-                cambiaTurno("Soluzione errata!");
+                cambiaTurno("Tentativo di risoluzione errato!");
             }
         }
 
@@ -436,9 +541,7 @@
             document.getElementById('game-container').style.display = 'none';
             document.getElementById('end-screen').style.display = 'block';
             
-            // Ordina dal punteggio più alto al più basso
             const classifica = [...players].sort((a, b) => b.score - a.score);
-            
             const podiumEl = document.getElementById('podium');
             podiumEl.innerHTML = "";
             
