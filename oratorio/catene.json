@@ -1,15 +1,188 @@
 {
-  "titolo": "La Mia Catena Scolastica",
+  "titolo_raccolta": "Reazione a Catena - 12 Catene",
   "premiIniziali": 150000,
-  "catena": [
-    "PRODOTTO",
-    "REGISTRO",
-    "TEMPO",
-    "BILANCIO",
-    "ENTRATE",
-    "NOTIZIA",
-    "PELLE",
-    "CONTROLLO",
-    "CARATTERE"
-  ]
+  "catene_gioco": [
+    {
+      "titolo": "Catena 1 - Scuola e Tempo",
+      "catena": [
+        "PRODOTTO",
+        "REGISTRO",
+        "TEMPO",
+        "BILANCIO",
+        "ENTRATE",
+        "NOTIZIA",
+        "PELLE",
+        "CONTROLLO",
+        "CARATTERE"
+      ]
+    },
+    {
+      "titolo": "Catena 2 - Natura e Notte",
+      "catena": [
+        "TERRA",
+        "SOLE",
+        "FIORE",
+        "PROFUMO",
+        "DONNA",
+        "MISTERO",
+        "NOTTE",
+        "SOGNO",
+        "REALTÀ"
+      ]
+    },
+    {
+      "titolo": "Catena 3 - Mare e Avventura",
+      "catena": [
+        "MARE",
+        "ONDA",
+        "RADIO",
+        "FREQUENZA",
+        "CANALE",
+        "NAVIGAZIONE",
+        "RETE",
+        "PESCE",
+        "SPADA"
+      ]
+    },
+    {
+      "titolo": "Catena 4 - Pane e Isola",
+      "catena": [
+        "PANE",
+        "FARINA",
+        "SACCO",
+        "PELO",
+        "GATTO",
+        "STRADA",
+        "MAPPA",
+        "TESORO",
+        "ISOLA"
+      ]
+    },
+    {
+      "titolo": "Catena 5 - Viaggio e Moneta",
+      "catena": [
+        "TRENO",
+        "BINARIO",
+        "CODICE",
+        "SEGRETO",
+        "AGENTE",
+        "CAMBIO",
+        "MONETA",
+        "ORO",
+        "CORONA"
+      ]
+    },
+    {
+      "titolo": "Catena 6 - Voce e Musica",
+      "catena": [
+        "VOCE",
+        "CORO",
+        "CHIESA",
+        "CAMPANA",
+        "VETRO",
+        "CRISTALLO",
+        "LIQUIDO",
+        "FRENO",
+        "DISCO"
+      ]
+    },
+    {
+      "titolo": "Catena 7 - Gioco e Regole",
+      "catena": [
+        "RE",
+        "SCACCHI",
+        "TAVOLA",
+        "LEGNO",
+        "MATITA",
+        "DISEGNO",
+        "LEGGE",
+        "ORDINE",
+        "PULIZIA"
+      ]
+    },
+    {
+      "titolo": "Catena 8 - Mente e Luce",
+      "catena": [
+        "LIBRO",
+        "PAGINA",
+        "STORIA",
+        "PASSATO",
+        "FUTURO",
+        "SPERANZA",
+        "LUCE",
+        "FARI",
+        "NEBBIA"
+      ]
+    },
+    {
+      "titolo": "Catena 9 - Aria e Tempo",
+      "catena": [
+        "VENTO",
+        "MULINO",
+        "PIETRA",
+        "FILOSOFALE",
+        "PIETRA",
+        "SABBIA",
+        "TEMPO",
+        "OROLOGIO",
+        "PENDOLO"
+      ]
+    },
+    {
+      "titolo": "Catena 10 - Fuoco e Lana",
+      "catena": [
+        "FUOCO",
+        "CAMINETTO",
+        "CASA",
+        "DOLCE",
+        "ZUCCHERO",
+        "FILATO",
+        "LANA",
+        "PECORA",
+        "GREGGE"
+      ]
+    },
+    {
+      "titolo": "Catena 11 - Teatro e Mistero",
+      "catena": [
+        "TEATRO",
+        "PALCO",
+        "LUCI",
+        "OMBRA",
+        "DUBBIO",
+        "AMLETO",
+        "TESCHIO",
+        "OSSO",
+        "CANE"
+      ]
+    },
+    {
+      "titolo": "Catena 12 - Città e Mani",
+      "catena": [
+        "STRADA",
+        "ASFALTO",
+        "GRIGIO",
+        "CIELO",
+        "STELLA",
+        "CINQUE",
+        "DITA",
+        "MANO",
+        "GUANTO"
+      ]
+    }
+  ],
+  "struttura_catena_personalizzata": {
+    "titolo": "Inserisci qui il titolo della tua catena",
+    "catena": [
+      "PAROLA_1",
+      "PAROLA_2",
+      "PAROLA_3",
+      "PAROLA_4",
+      "PAROLA_5",
+      "PAROLA_6",
+      "PAROLA_7",
+      "PAROLA_8",
+      "PAROLA_9"
+    ]
+  }
 }
