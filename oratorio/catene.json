@@ -1,5 +1,6 @@
 {
   "titolo_raccolta": "Reazione a Catena - 12 Catene",
+  "premiIniziali": 150000,
   "catene_gioco": [
     {
       "titolo": "Catena 1 - Scuola e Tempo",
@@ -9,9 +10,13 @@
         "TEMPO",
         "BILANCIO",
         "ENTRATE",
+        "ULTIMA",
         "NOTIZIA",
+        "BRIVIDO",
         "PELLE",
+        "VISITA",
         "CONTROLLO",
+        "FERRO",
         "CARATTERE"
       ]
     },
@@ -169,19 +174,5 @@
         "GUANTO"
       ]
     }
-  ],
-  "struttura_catena_personalizzata": {
-    "titolo": "Inserisci qui il titolo della tua catena",
-    "catena": [
-      "PAROLA_1",
-      "PAROLA_2",
-      "PAROLA_3",
-      "PAROLA_4",
-      "PAROLA_5",
-      "PAROLA_6",
-      "PAROLA_7",
-      "PAROLA_8",
-      "PAROLA_9"
-    ]
-  }
+  ]
 }

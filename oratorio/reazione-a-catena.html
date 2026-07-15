@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reazione a Catena - Simulatore Professionale</title>
+    <title>Reazione a Catena - Torneo Multimanche</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #670324, #120136, #03001e);
@@ -72,6 +72,14 @@
             background: #251b45;
             color: #fff;
             font-size: 1rem;
+            outline: none;
+        }
+
+        .status-message {
+            margin-top: 8px;
+            font-size: 0.95rem;
+            color: #2ec4b6;
+            font-weight: bold;
         }
 
         button {
@@ -181,6 +189,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+
+        #manche-indicator {
+            font-size: 1.3rem;
+            color: #00c6ff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px rgba(0, 198, 255, 0.5);
+            text-align: center;
+            font-weight: bold;
         }
 
         .chain-container {
@@ -327,13 +344,13 @@
 </head>
 <body>
 
-    <!-- SCHERMATA DI CONFIGURAZIONE INIZIALE -->
     <div id="setup-screen">
         <h1>Reazione a Catena</h1>
         
         <div class="form-group">
-            <label for="json-file">Carica File JSON della Catena (Opzionale):</label>
+            <label for="json-file">Carica File JSON delle Catene:</label>
             <input type="file" id="json-file" accept=".json">
+            <div id="file-status" class="status-message">Nessun file caricato. Verrà usata la catena di default.</div>
         </div>
 
         <div class="form-group">
@@ -343,23 +360,20 @@
 
         <h3 style="text-align: left; margin-bottom: 10px; color: #0093e9; font-size: 1.1rem;">Nomi Squadre e Montepremi Iniziali</h3>
         <div id="team-names-container" class="team-inputs-container">
-            <!-- Generato dinamicamente via Javascript -->
-        </div>
+            </div>
 
-        <button class="btn-primary" onclick="startGame()">INIZIA IL GIOCO</button>
+        <button class="btn-primary" onclick="startGame()">INIZIA IL TORNEO</button>
     </div>
 
-    <!-- SCHERMATA DI GIOCO -->
     <div id="game-screen">
         
-        <!-- PANNELLO SINISTRO: STATO DELLE SQUADRE IN GARA -->
         <div class="left-panel">
             <div class="panel-title">Squadre e Jolly</div>
             <div id="scoreboard"></div>
         </div>
 
-        <!-- PANNELLO CENTRALE: GRAFICA ATTIVA DELLA CATENA -->
         <div class="center-panel">
+            <div id="manche-indicator">Manche 1 / 1</div>
             <div class="chain-container" id="chain-wrapper">
                 <div class="bubble bubble-anchor" id="node-top">PAROLA SOPRA</div>
                 <div class="bubble bubble-target" id="node-mid">R_________</div>
@@ -367,11 +381,9 @@
             </div>
             
             <div class="upcoming-list" id="upcoming-stack">
-                <!-- Mostra l'anteprima delle ancore inferiori residue -->
-            </div>
+                </div>
         </div>
 
-        <!-- PANNELLO DESTRO: CONTROLLI CONDUTTORE / INTERAZIONE -->
         <div class="right-panel">
             <div class="panel-title">Squadra Attiva</div>
             <div class="prize-capsule" id="current-prize">150.000 €</div>
@@ -388,70 +400,79 @@
     </div>
 
     <script>
-        // Set di dati di default se non viene caricato nessun file custom
-        let gameData = {
-            titolo: "Catena Standard",
-            catena: [
-                "PRODOTTO",
-                "REGISTRO",
-                "TEMPO",
-                "BILANCIO",
-                "ENTRATE",
-                "NOTIZIA",
-                "PELLE",
-                "CONTROLLO",
-                "CARATTERE"
-            ]
+        // Catena di fallback standard
+        const defaultData = {
+            catene_gioco: [{
+                titolo: "Catena Standard",
+                catena: ["PRODOTTO", "REGISTRO", "TEMPO", "BILANCIO", "ENTRATE", "NOTIZIA", "PELLE", "CONTROLLO", "CARATTERE"]
+            }],
+            premiIniziali: 150000
         };
+
+        let loadedData = defaultData; // Conterrà l'intera struttura del JSON
+        let activeChainList = [];     // Array contenente tutte le catene da giocare in sequenza
+        let currentChainIndex = 0;    // Indice della manche/catena corrente
+        let gameData = null;          // La singola catena attiva al momento
 
         let teams = [];
         let currentTeamIndex = 0;
-        let currentAnchorIndex = 0; // Punta all'ancora superiore attiva (indici pari: 0, 2, 4...)
+        let currentAnchorIndex = 0; 
         let lettersRevealedCount = 1;
 
-        // Genera dinamicamente le righe delle squadre con montepremi personalizzabile
+        // Genera i campi delle squadre
         function generateTeamInputs() {
             const count = parseInt(document.getElementById('team-count').value) || 2;
             const container = document.getElementById('team-names-container');
+            const defaultPrize = loadedData.premiIniziali || 150000;
+            
             container.innerHTML = '';
             for(let i = 1; i <= count; i++) {
                 container.innerHTML += `
                     <div class="setup-team-row">
                         <input type="text" id="team-name-${i}" value="Squadra ${i}" placeholder="Nome Squadra ${i}" style="flex: 2;">
-                        <input type="number" id="team-prize-${i}" value="150000" step="5000" placeholder="Montepremi (€)" style="flex: 1.2;">
+                        <input type="number" id="team-prize-${i}" value="${defaultPrize}" step="5000" placeholder="Montepremi (€)" style="flex: 1.2;">
                     </div>
                 `;
             }
         }
         generateTeamInputs();
 
-        // Caricamento del file JSON
+        // Lettura del file .json con supporto multimanche
         document.getElementById('json-file').addEventListener('change', function(e) {
             const reader = new FileReader();
             reader.onload = function(event) {
                 try {
-                    gameData = JSON.parse(event.target.result);
-                    if(!gameData.catena || gameData.catena.length < 3) {
-                        alert("Errore: Il formato del JSON non è corretto o contiene troppe poche parole.");
+                    const parsed = JSON.parse(event.target.result);
+                    
+                    if (parsed.catene_gioco && Array.isArray(parsed.catene_gioco)) {
+                        loadedData = parsed;
+                        document.getElementById('file-status').innerText = `✅ File caricato con successo! Rilevate ${parsed.catene_gioco.length} catene.`;
+                    } else if (parsed.catena && Array.isArray(parsed.catena)) {
+                        loadedData = { catene_gioco: [parsed], premiIniziali: parsed.premiIniziali || 150000 };
+                        document.getElementById('file-status').innerText = `✅ File caricato! Rilevata 1 catena singola.`;
                     } else {
-                        // Se il JSON contiene premi iniziali consigliati, li imposta come default negli input
-                        if (gameData.premiIniziali) {
-                            const count = parseInt(document.getElementById('team-count').value) || 2;
-                            for (let i = 1; i <= count; i++) {
-                                const prizeInput = document.getElementById(`team-prize-${i}`);
-                                if (prizeInput) prizeInput.value = gameData.premiIniziali;
-                            }
-                        }
+                        alert("Formato file non valido. Assicurati che esista l'elenco 'catene_gioco'.");
+                        return;
                     }
+                    generateTeamInputs();
                 } catch(err) {
-                    alert("Impossibile analizzare il file JSON. Assicurati che la sintassi sia corretta.");
+                    alert("Errore di sintassi nel file JSON. Controlla virgole e parentesi.");
                 }
             };
             reader.readAsText(e.target.files[0]);
         });
 
-        // Avvio del Gioco
+        // Avvio del Gioco (Configurazione Iniziale delle squadre)
         function startGame() {
+            activeChainList = loadedData.catene_gioco;
+            currentChainIndex = 0;
+
+            if(!activeChainList || activeChainList.length === 0) {
+                alert("Nessuna catena disponibile per iniziare.");
+                return;
+            }
+
+            // Inizializza le squadre solo all'inizio del torneo
             const count = parseInt(document.getElementById('team-count').value) || 2;
             teams = [];
             for(let i = 1; i <= count; i++) {
@@ -460,25 +481,38 @@
                 teams.push({
                     name: name,
                     prize: initialPrize,
-                    jokers: 2 // Ogni squadra ha esattamente 2 Jolly utilizzabili
+                    jokers: 2 // Assegnati per la prima manche
                 });
             }
 
-            currentAnchorIndex = 0;
-            currentTeamIndex = 0;
-            lettersRevealedCount = 1;
-            
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'grid';
+            
+            loadManche(currentChainIndex);
+        }
+
+        // Caricamento di una specifica Manche/Catena
+        function loadManche(index) {
+            gameData = activeChainList[index];
+            currentAnchorIndex = 0;
+            lettersRevealedCount = 1;
+            
+            // Regola fondamentale: all'inizio di ogni nuova manche i Jolly si resettano a 2 per tutti!
+            teams.forEach(t => t.jokers = 2);
+
+            // Se non è la prima manche, facciamo iniziare la squadra successiva rispetto a chi ha chiuso la precedente
+            // (oppure mantiene l'ordine alternato continuo)
             
             updateScoreboard();
             renderChainView();
         }
 
-        // Renderizzazione visiva dei nodi della catena attiva e del fondo
+        // Renderizzazione Grafica della Catena attiva
         function renderChainView() {
+            // Aggiorna indicatore di manche in alto
+            document.getElementById('manche-indicator').innerText = `MANCHE ${currentChainIndex + 1} / ${activeChainList.length} • ${gameData.titolo || 'Senza Titolo'}`;
+
             const arr = gameData.catena;
-            
             const topWord = arr[currentAnchorIndex];
             const secretWord = arr[currentAnchorIndex + 1];
             const bottomWord = arr[currentAnchorIndex + 2];
@@ -486,21 +520,20 @@
             document.getElementById('node-top').innerText = topWord;
             document.getElementById('node-bot').innerText = bottomWord;
 
-            // Crea la stringa mascherata (Es: R_ _ _ _ _)
             let displayedSecret = secretWord.substring(0, lettersRevealedCount);
             for(let i = lettersRevealedCount; i < secretWord.length; i++) {
                 displayedSecret += " _";
             }
             document.getElementById('node-mid').innerText = displayedSecret;
 
-            // Aggiorna lo stack visivo in basso (solo le ancore, saltando le parole segrete)
+            // Anteprime nodi successivi
             const stackContainer = document.getElementById('upcoming-stack');
             stackContainer.innerHTML = '';
             for(let i = currentAnchorIndex + 4; i < arr.length; i += 2) {
                 stackContainer.innerHTML += `<div class="upcoming-node">${arr[i]}</div>`;
             }
 
-            // Aggiorna lo stato del pulsante Jolly in base ai jolly residui della squadra attiva
+            // Aggiorna stato visivo del pulsante Jolly
             const activeTeam = teams[currentTeamIndex];
             const jokerBtn = document.getElementById('joker-btn');
             jokerBtn.innerText = `🌟 Usa Jolly (${activeTeam.jokers})`;
@@ -512,12 +545,11 @@
                 jokerBtn.style.cursor = 'pointer';
             }
 
-            // Pulisce l'input
             document.getElementById('player-guess').value = '';
             document.getElementById('player-guess').focus();
         }
 
-        // Controllo della Risposta Digitata
+        // Controllo Risposte delle Squadre
         function checkAnswer() {
             const inputField = document.getElementById('player-guess');
             const cleanGuess = inputField.value.trim().toUpperCase();
@@ -526,25 +558,21 @@
             if (cleanGuess === '') return;
 
             if (cleanGuess === correctSolution) {
-                // SQUADRA INDOVINA: Anima il successo, avanza la catena, ma PASSA comunque il turno
                 triggerSuccessAnimation();
             } else {
-                // SQUADRA SBAGLIA: Dimezza, aggiunge lettera, passa alla prossima squadra
                 const activeTeam = teams[currentTeamIndex];
                 activeTeam.prize = Math.ceil(activeTeam.prize / 2);
                 
                 alert(`SBAGLIATO!\nIl montepremi di "${activeTeam.name}" viene dimezzato!\nSi aggiunge una lettera e il turno passa alla squadra successiva.`);
 
-                // Incrementa le lettere rivelate
                 const secretLength = gameData.catena[currentAnchorIndex + 1].length;
                 if (lettersRevealedCount < secretLength) {
                     lettersRevealedCount++;
                 }
 
-                // Se la rivelazione forzata della lettera completa l'intera parola
                 if (lettersRevealedCount >= secretLength) {
-                    alert(`La parola misteriosa era "${correctSolution}". Viene posizionata sulla catena e il gioco avanza.`);
-                    advanceChainDirectly();
+                    alert(`La parola misteriosa era "${correctSolution}". Viene svelata e la catena avanza.`);
+                    handleChainProgression();
                 } else {
                     nextTurn();
                     renderChainView();
@@ -552,96 +580,93 @@
             }
         }
 
-        // Meccanica di utilizzo del Jolly
+        // Gestione dell'uso del Jolly
         function useJoker() {
             const activeTeam = teams[currentTeamIndex];
             const secretWord = gameData.catena[currentAnchorIndex + 1];
 
             if (activeTeam.jokers <= 0) {
-                alert("Nessun Jolly rimasto per questa squadra!");
+                alert("Nessun Jolly rimasto per questa manche!");
                 return;
             }
 
             if (lettersRevealedCount >= secretWord.length - 1) {
-                alert("Rimane solo una lettera da indovinare! Non puoi usare Jolly adesso.");
+                alert("Rimane una sola lettera! Non puoi sprecare un Jolly adesso.");
                 return;
             }
 
-            // Consuma jolly e rivela una lettera
             activeTeam.jokers--;
             lettersRevealedCount++;
             
             updateScoreboard();
             renderChainView();
-            alert(`Jolly Usato! È stata svelata una lettera aggiuntiva. Tocca ancora a "${activeTeam.name}" indovinare.`);
+            alert(`Jolly speso! Rivelata una lettera in più. Tocca ancora a "${activeTeam.name}".`);
         }
 
-        // Animazione corretta soluzione
+        // Animazioni di successo e passaggio turno
         function triggerSuccessAnimation() {
             const targetWord = gameData.catena[currentAnchorIndex + 1];
             const activeTeamName = teams[currentTeamIndex].name;
             
             document.getElementById('node-mid').innerText = targetWord;
-            document.getElementById('node-mid').style.background = "#2ec4b6"; // Luce verde successo
+            document.getElementById('node-mid').style.background = "#2ec4b6"; 
 
             setTimeout(() => {
-                // Avanzamento indici della catena
-                currentAnchorIndex += 2;
-                lettersRevealedCount = 1;
-
-                // Ripristino grafica originale
                 document.getElementById('node-mid').style.background = 'var(--orange-bubble)';
-
-                if (currentAnchorIndex + 1 >= gameData.catena.length) {
-                    endGame();
-                } else {
-                    alert(`Esatto! "${activeTeamName}" ha trovato la parola.\nLa catena avanza e il turno passa alla squadra successiva!`);
-                    nextTurn();
-                    renderChainView();
-                }
+                alert(`Esatto! "${activeTeamName}" ha trovato la parola.`);
+                handleChainProgression();
             }, 1300);
         }
 
-        // Avanzamento manuale senza vincitore diretto (se la parola viene rivelata del tutto)
-        function advanceChainDirectly() {
+        // Gestisce l'avanzamento dei nodi o il cambio della manche
+        function handleChainProgression() {
             currentAnchorIndex += 2;
             lettersRevealedCount = 1;
+
+            // Se la catena corrente è FINITA
             if (currentAnchorIndex + 1 >= gameData.catena.length) {
-                endGame();
+                checkNextManche();
             } else {
+                // Se la catena continua, passa comunque il turno alla squadra successiva (come da tua regola)
                 nextTurn();
                 renderChainView();
             }
         }
 
-        // Cambio turno manuale o automatico
+        // Controlla se ci sono altre catene da giocare nel torneo
+        function checkNextManche() {
+            currentChainIndex++;
+            
+            if (currentChainIndex < activeChainList.length) {
+                alert(`🎉 MANCHE COMPLETATA!\n\nPreparatevi... si passa alla prossima catena: \n"${activeChainList[currentChainIndex].titolo}"!\n\nI Jolly di tutte le squadre sono stati ricaricati a 2.`);
+                nextTurn(); // Passa alla squadra successiva per iniziare la nuova manche
+                loadManche(currentChainIndex);
+            } else {
+                endGame(); // Fine totale del torneo
+            }
+        }
+
         function nextTurn() {
             currentTeamIndex = (currentTeamIndex + 1) % teams.length;
             updateScoreboard();
         }
 
-        // Rivelazione forzata conduttore (Bypass)
         function forceReveal() {
             const correctSolution = gameData.catena[currentAnchorIndex + 1].toUpperCase();
-            const procedi = confirm(`Vuoi rivelare forzatamente la parola "${correctSolution}"?`);
-            if (procedi) {
-                advanceChainDirectly();
+            if (confirm(`Vuoi rivelare forzatamente la parola "${correctSolution}"?`)) {
+                handleChainProgression();
             }
         }
 
-        // Aggiornamento dello Scoreboard laterale
         function updateScoreboard() {
             const holder = document.getElementById('scoreboard');
             holder.innerHTML = '';
             
             teams.forEach((t, idx) => {
                 const isActive = (idx === currentTeamIndex) ? 'active-turn' : '';
-                
-                // Crea visivamente i pallini dei Jolly
                 let jokersHTML = '';
                 for (let j = 0; j < 2; j++) {
-                    const isUsed = j >= t.jokers;
-                    jokersHTML += `<span class="joker-badge ${isUsed ? 'used' : ''}">J</span>`;
+                    jokersHTML += `<span class="joker-badge ${j >= t.jokers ? 'used' : ''}">J</span>`;
                 }
 
                 holder.innerHTML += `
@@ -657,13 +682,12 @@
                 `;
             });
             
-            // Aggiorna il montepremi in evidenza sulla destra (relativo al giocatore di turno)
             if (teams[currentTeamIndex]) {
                 document.getElementById('current-prize').innerText = teams[currentTeamIndex].prize.toLocaleString('it-IT') + " €";
             }
         }
 
-        // Fine del gioco e calcolo del Vincitore
+        // Fine del torneo e proclamazione del vincitore finale
         function endGame() {
             let winner = teams[0];
             let draw = false;
@@ -677,15 +701,15 @@
                 }
             }
 
-            let recap = "🏁 GIOCO FINITO!\n\nClassifica Finale:\n";
+            let recap = "🏆 IL TORNEO È TERMINATO! 🏆\n\nClassifica Finale Generale:\n";
             teams.forEach(t => {
                 recap += `- ${t.name}: ${t.prize.toLocaleString('it-IT')} €\n`;
             });
 
             if (draw) {
-                recap += "\nIncredibile! Abbiamo un pareggio sul gradino più alto del podio!";
+                recap += "\nIncredibile! C'è un pareggio perfetto al primo posto!";
             } else {
-                recap += `\n🏆 COMPLIMENTI A: ${winner.name} che vince la manche!`;
+                recap += `\n👑 VINCE IL TORNEO ASSOLUTO: ${winner.name}!!!`;
             }
 
             alert(recap);
@@ -695,13 +719,13 @@
         function resetToSetup() {
             document.getElementById('setup-screen').style.display = 'block';
             document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('file-status').innerText = "Nessun file caricato. Verrà usata la catena di default.";
+            loadedData = defaultData;
+            generateTeamInputs();
         }
 
-        // Tasto Enter per invio rapido
         document.getElementById('player-guess').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                checkAnswer();
-            }
+            if (e.key === 'Enter') checkAnswer();
         });
     </script>
 </body>
