@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reazione a Catena - Simulatore</title>
+    <title>Reazione a Catena - Simulatore Professionale</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #670324, #120136, #03001e);
@@ -30,16 +30,17 @@
             align-items: center;
             justify-content: center;
             overflow-x: hidden;
+            padding: 20px;
         }
 
         /* Schermata di Configurazione */
         #setup-screen {
-            background: rgba(18, 1, 54, 0.85);
+            background: rgba(18, 1, 54, 0.9);
             border: 3px solid #ff9100;
             border-radius: 20px;
             padding: 40px;
-            width: 90%;
-            max-width: 500px;
+            width: 100%;
+            max-width: 600px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.7);
         }
@@ -92,55 +93,87 @@
         }
 
         .btn-primary:hover {
-            transform: scale(1.03);
+            transform: scale(1.02);
             box-shadow: 0 6px 20px rgba(255, 85, 0, 0.6);
         }
 
         /* Interfaccia di Gioco Principale */
         #game-screen {
             display: none;
-            width: 95%;
-            max-width: 1200px;
-            grid-template-columns: 1fr 1.5fr 1fr;
-            gap: 20px;
-            padding: 20px;
+            width: 100%;
+            max-width: 1300px;
+            grid-template-columns: 1.2fr 1.6fr 1.2fr;
+            gap: 25px;
         }
 
-        /* Pannello Sinistro: Scoreboard e Montepremi */
+        /* Pannelli di Gioco */
         .left-panel, .right-panel {
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.5);
             border-radius: 15px;
-            padding: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
-        .prize-capsule {
-            background: var(--orange-bubble);
-            padding: 15px;
-            border-radius: 40px;
+        .panel-title {
+            font-size: 1.3rem;
+            color: #ff9100;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             text-align: center;
-            font-size: 2rem;
-            font-weight: bold;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.6), 0 5px 15px rgba(0,0,0,0.5);
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+            border-bottom: 2px solid rgba(255, 145, 0, 0.2);
+            padding-bottom: 10px;
         }
 
+        /* Gestione Scoreboard e Jolly */
         .team-score-card {
             background: #1a1436;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 5px solid #0093e9;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 6px solid #444;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s ease;
         }
 
         .team-score-card.active-turn {
-            border-left: 5px solid #ff9100;
-            background: #311c52;
-            animation: pulse 1.5s infinite;
+            border-left: 6px solid #ff9100;
+            background: #2b124c;
+            animation: pulse 1.8s infinite;
+        }
+
+        .joker-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .joker-badge {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #ff9100;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border: 1px solid #fff;
+            box-shadow: 0 0 8px rgba(255, 145, 0, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .joker-badge.used {
+            background: #333 !important;
+            color: #666 !important;
+            border: 1px solid #555 !important;
+            box-shadow: none !important;
         }
 
         /* Centro: Display Catena */
@@ -152,7 +185,7 @@
 
         .chain-container {
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -160,14 +193,14 @@
 
         .bubble {
             width: 100%;
-            padding: 18px;
-            border-radius: 15px;
+            padding: 20px;
+            border-radius: 18px;
             text-align: center;
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: bold;
             letter-spacing: 2px;
             text-transform: uppercase;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
             transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
             position: relative;
         }
@@ -175,17 +208,19 @@
         .bubble-anchor {
             background: linear-gradient(to right, #0072ff, #00c6ff);
             border: 2px solid #ffffff40;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
         }
 
         .bubble-target {
             background: var(--orange-bubble);
             border: 2px solid #ffffff60;
             color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
         }
 
-        /* Lista degli ancoraggi successivi sotto */
         .upcoming-list {
             width: 100%;
+            max-width: 480px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -195,58 +230,79 @@
 
         .upcoming-node {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: rgba(31, 36, 56, 0.9);
-            border: 1px solid #0093e9;
+            border: 1px solid #00c6ff;
             border-radius: 8px;
             text-align: center;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             color: #00c6ff;
             font-weight: bold;
             letter-spacing: 1px;
             transform: scale(0.98);
-            transition: all 0.5s ease;
         }
 
-        /* Animazioni della Catena */
-        .slide-out-top {
-            transform: translateY(-50px) scale(0.8);
-            opacity: 0;
-            pointer-events: none;
+        /* Sezione Montepremi della squadra attiva */
+        .prize-capsule {
+            background: var(--orange-bubble);
+            padding: 18px;
+            border-radius: 40px;
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: bold;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.6), 0 5px 15px rgba(0,0,0,0.5);
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
         }
 
-        /* Pannello di Controllo Host/Giocatori */
+        /* Pannello di Controllo Risposte */
         .controls-box {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            margin-top: 25px;
             width: 100%;
         }
 
         .input-guess {
-            padding: 15px;
-            font-size: 1.3rem;
+            padding: 16px;
+            font-size: 1.4rem;
             text-align: center;
             border-radius: 30px;
-            border: 2px solid #0093e9;
+            border: 3px solid #0093e9;
             background: #0f0a26;
             color: white;
             text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-guess:focus {
+            box-shadow: 0 0 15px rgba(0, 147, 233, 0.6);
+            border-color: #00c6ff;
         }
 
         .btn-action {
             background: #231942;
             color: white;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.25);
         }
         .btn-action:hover { background: #3b2d6b; }
 
         .btn-success { background: #2ec4b6; color: white; }
-        .btn-success:hover { background: #20a396; }
+        .btn-success:hover { background: #20a396; transform: scale(1.02); }
 
-        .btn-danger { background: #e63946; color: white; }
-        .btn-danger:hover { background: #ca1d2d; }
+        .btn-joker {
+            background: linear-gradient(135deg, #ff9100, #d4af37);
+            color: white;
+            border: 1px solid gold;
+            box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
+        }
+        .btn-joker:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 15px rgba(212, 175, 55, 0.5);
+        }
 
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(255, 145, 0, 0.4); }
@@ -255,124 +311,162 @@
         }
 
         .team-inputs-container {
-            max-height: 180px;
+            max-height: 250px;
             overflow-y: auto;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             padding-right: 5px;
+        }
+
+        .setup-team-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: center;
         }
     </style>
 </head>
 <body>
 
+    <!-- SCHERMATA DI CONFIGURAZIONE INIZIALE -->
     <div id="setup-screen">
         <h1>Reazione a Catena</h1>
         
         <div class="form-group">
-            <label for="json-file">Carica File JSON della Catena:</label>
+            <label for="json-file">Carica File JSON della Catena (Opzionale):</label>
             <input type="file" id="json-file" accept=".json">
         </div>
 
         <div class="form-group">
-            <label for="team-count">Numero di Squadre (X):</label>
+            <label for="team-count">Numero di Squadre:</label>
             <input type="number" id="team-count" min="1" max="10" value="2" onchange="generateTeamInputs()">
         </div>
 
+        <h3 style="text-align: left; margin-bottom: 10px; color: #0093e9; font-size: 1.1rem;">Nomi Squadre e Montepremi Iniziali</h3>
         <div id="team-names-container" class="team-inputs-container">
-            </div>
+            <!-- Generato dinamicamente via Javascript -->
+        </div>
 
         <button class="btn-primary" onclick="startGame()">INIZIA IL GIOCO</button>
     </div>
 
+    <!-- SCHERMATA DI GIOCO -->
     <div id="game-screen">
         
+        <!-- PANNELLO SINISTRO: STATO DELLE SQUADRE IN GARA -->
         <div class="left-panel">
-            <h3 style="margin-bottom: 15px; color: #ff9100;">SQUADRE IN GARA</h3>
+            <div class="panel-title">Squadre e Jolly</div>
             <div id="scoreboard"></div>
         </div>
 
+        <!-- PANNELLO CENTRALE: GRAFICA ATTIVA DELLA CATENA -->
         <div class="center-panel">
             <div class="chain-container" id="chain-wrapper">
-                <div class="bubble bubble-anchor" id="node-top">ANCORE SOPRA</div>
+                <div class="bubble bubble-anchor" id="node-top">PAROLA SOPRA</div>
                 <div class="bubble bubble-target" id="node-mid">R_________</div>
-                <div class="bubble bubble-anchor" id="node-bot">ANCORE SOTTO</div>
+                <div class="bubble bubble-anchor" id="node-bot">PAROLA SOTTO</div>
             </div>
             
             <div class="upcoming-list" id="upcoming-stack">
-                </div>
+                <!-- Mostra l'anteprima delle ancore inferiori residue -->
+            </div>
         </div>
 
+        <!-- PANNELLO DESTRO: CONTROLLI CONDUTTORE / INTERAZIONE -->
         <div class="right-panel">
-            <div class="prize-capsule" id="current-prize">150.000</div>
+            <div class="panel-title">Squadra Attiva</div>
+            <div class="prize-capsule" id="current-prize">150.000 €</div>
             
             <div class="controls-box">
-                <input type="text" id="player-guess" class="input-guess" placeholder="Scrivi la risposta..." autofocus>
+                <input type="text" id="player-guess" class="input-guess" placeholder="SCRIVI LA RISPOSTA..." autofocus>
                 
                 <button class="btn-success" onclick="checkAnswer()">Invia Risposta</button>
-                <button class="btn-danger" onclick="halvePrize()">⚠️ Dimezza Montepremi</button>
-                <button class="btn-action" onclick="revealExtraLetter()">Rivela Lettera Extra</button>
-                <button class="btn-action" style="background-color: #581c87;" onclick="nextTurn()">Passa Turno Squadra</button>
-                <button class="btn-action" style="margin-top: 20px; border-color: red;" onclick="forceReveal()">Mostra Soluzione</button>
+                <button class="btn-joker" id="joker-btn" onclick="useJoker()">🌟 Usa Jolly (-1)</button>
+                <button class="btn-action" style="background-color: #581c87;" onclick="nextTurn()">Passa Turno</button>
+                <button class="btn-action" style="margin-top: 15px; border-color: #ff3333;" onclick="forceReveal()">Rivelazione Assistita</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Stato Globale dell'Applicazione
+        // Set di dati di default se non viene caricato nessun file custom
         let gameData = {
             titolo: "Catena Standard",
-            premiIniziali: 150000,
-            catena: ["PRODOTTO", "REGISTRO", "TEMPO", "BILANCIO", "ENTRATE", "NOTIZIA", "PELLE", "CONTROLLO", "CARATTERE"]
+            catena: [
+                "PRODOTTO",
+                "REGISTRO",
+                "TEMPO",
+                "BILANCIO",
+                "ENTRATE",
+                "NOTIZIA",
+                "PELLE",
+                "CONTROLLO",
+                "CARATTERE"
+            ]
         };
 
         let teams = [];
         let currentTeamIndex = 0;
-        let currentPrize = 150000;
-        let currentAnchorIndex = 0; // Punta sempre all'ancora superiore attiva (indici pari: 0, 2, 4...)
+        let currentAnchorIndex = 0; // Punta all'ancora superiore attiva (indici pari: 0, 2, 4...)
         let lettersRevealedCount = 1;
 
-        // Inizializzazione input nomi squadre
+        // Genera dinamicamente le righe delle squadre con montepremi personalizzabile
         function generateTeamInputs() {
             const count = parseInt(document.getElementById('team-count').value) || 2;
             const container = document.getElementById('team-names-container');
             container.innerHTML = '';
             for(let i = 1; i <= count; i++) {
                 container.innerHTML += `
-                    <div style="margin-bottom: 8px;">
-                        <input type="text" id="team-name-${i}" value="Squadra ${i}" placeholder="Nome Squadra ${i}">
+                    <div class="setup-team-row">
+                        <input type="text" id="team-name-${i}" value="Squadra ${i}" placeholder="Nome Squadra ${i}" style="flex: 2;">
+                        <input type="number" id="team-prize-${i}" value="150000" step="5000" placeholder="Montepremi (€)" style="flex: 1.2;">
                     </div>
                 `;
             }
         }
         generateTeamInputs();
 
-        // Lettura file JSON
+        // Caricamento del file JSON
         document.getElementById('json-file').addEventListener('change', function(e) {
             const reader = new FileReader();
             reader.onload = function(event) {
                 try {
                     gameData = JSON.parse(event.target.result);
                     if(!gameData.catena || gameData.catena.length < 3) {
-                        alert("Formato JSON non valido o parole insufficienti.");
+                        alert("Errore: Il formato del JSON non è corretto o contiene troppe poche parole.");
+                    } else {
+                        // Se il JSON contiene premi iniziali consigliati, li imposta come default negli input
+                        if (gameData.premiIniziali) {
+                            const count = parseInt(document.getElementById('team-count').value) || 2;
+                            for (let i = 1; i <= count; i++) {
+                                const prizeInput = document.getElementById(`team-prize-${i}`);
+                                if (prizeInput) prizeInput.value = gameData.premiIniziali;
+                            }
+                        }
                     }
                 } catch(err) {
-                    alert("Errore nella lettura del file JSON.");
+                    alert("Impossibile analizzare il file JSON. Assicurati che la sintassi sia corretta.");
                 }
             };
             reader.readAsText(e.target.files[0]);
         });
 
-        // Avvio Gioco
+        // Avvio del Gioco
         function startGame() {
             const count = parseInt(document.getElementById('team-count').value) || 2;
             teams = [];
             for(let i = 1; i <= count; i++) {
                 const name = document.getElementById(`team-name-${i}`).value || `Squadra ${i}`;
-                teams.push({ name: name, score: 0 });
+                const initialPrize = parseInt(document.getElementById(`team-prize-${i}`).value) || 150000;
+                teams.push({
+                    name: name,
+                    prize: initialPrize,
+                    jokers: 2 // Ogni squadra ha esattamente 2 Jolly utilizzabili
+                });
             }
 
-            currentPrize = gameData.premiIniziali || 150000;
             currentAnchorIndex = 0;
             currentTeamIndex = 0;
+            lettersRevealedCount = 1;
             
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'grid';
@@ -381,11 +475,10 @@
             renderChainView();
         }
 
-        // Renderizzazione Dinamica della Catena di Parole
+        // Renderizzazione visiva dei nodi della catena attiva e del fondo
         function renderChainView() {
             const arr = gameData.catena;
             
-            // Assegnazione parole dei 3 blocchi principali
             const topWord = arr[currentAnchorIndex];
             const secretWord = arr[currentAnchorIndex + 1];
             const bottomWord = arr[currentAnchorIndex + 2];
@@ -393,22 +486,33 @@
             document.getElementById('node-top').innerText = topWord;
             document.getElementById('node-bot').innerText = bottomWord;
 
-            // Costruisci il testo nascosto (Es: R_ _ _ _ _ _)
+            // Crea la stringa mascherata (Es: R_ _ _ _ _)
             let displayedSecret = secretWord.substring(0, lettersRevealedCount);
             for(let i = lettersRevealedCount; i < secretWord.length; i++) {
                 displayedSecret += " _";
             }
             document.getElementById('node-mid').innerText = displayedSecret;
 
-            // Aggiorna lo stack delle ancore successive in basso (Prendiamo gli indici pari successivi)
+            // Aggiorna lo stack visivo in basso (solo le ancore, saltando le parole segrete)
             const stackContainer = document.getElementById('upcoming-stack');
             stackContainer.innerHTML = '';
-            
             for(let i = currentAnchorIndex + 4; i < arr.length; i += 2) {
                 stackContainer.innerHTML += `<div class="upcoming-node">${arr[i]}</div>`;
             }
 
-            document.getElementById('current-prize').innerText = currentPrize.toLocaleString('it-IT');
+            // Aggiorna lo stato del pulsante Jolly in base ai jolly residui della squadra attiva
+            const activeTeam = teams[currentTeamIndex];
+            const jokerBtn = document.getElementById('joker-btn');
+            jokerBtn.innerText = `🌟 Usa Jolly (${activeTeam.jokers})`;
+            if (activeTeam.jokers <= 0) {
+                jokerBtn.style.opacity = '0.5';
+                jokerBtn.style.cursor = 'not-allowed';
+            } else {
+                jokerBtn.style.opacity = '1';
+                jokerBtn.style.cursor = 'pointer';
+            }
+
+            // Pulisce l'input
             document.getElementById('player-guess').value = '';
             document.getElementById('player-guess').focus();
         }
@@ -419,84 +523,173 @@
             const cleanGuess = inputField.value.trim().toUpperCase();
             const correctSolution = gameData.catena[currentAnchorIndex + 1].toUpperCase();
 
-            if(cleanGuess === correctSolution) {
+            if (cleanGuess === '') return;
+
+            if (cleanGuess === correctSolution) {
+                // SQUADRA INDOVINA: Anima il successo, avanza la catena, ma PASSA comunque il turno
                 triggerSuccessAnimation();
             } else {
-                alert("Risposta Errata! Il portafoglio si dimezza.");
-                halvePrize();
+                // SQUADRA SBAGLIA: Dimezza, aggiunge lettera, passa alla prossima squadra
+                const activeTeam = teams[currentTeamIndex];
+                activeTeam.prize = Math.ceil(activeTeam.prize / 2);
+                
+                alert(`SBAGLIATO!\nIl montepremi di "${activeTeam.name}" viene dimezzato!\nSi aggiunge una lettera e il turno passa alla squadra successiva.`);
+
+                // Incrementa le lettere rivelate
+                const secretLength = gameData.catena[currentAnchorIndex + 1].length;
+                if (lettersRevealedCount < secretLength) {
+                    lettersRevealedCount++;
+                }
+
+                // Se la rivelazione forzata della lettera completa l'intera parola
+                if (lettersRevealedCount >= secretLength) {
+                    alert(`La parola misteriosa era "${correctSolution}". Viene posizionata sulla catena e il gioco avanza.`);
+                    advanceChainDirectly();
+                } else {
+                    nextTurn();
+                    renderChainView();
+                }
             }
         }
 
-        // Animazione di Transizione e Avanzamento della Catena
-        function triggerSuccessAnimation() {
-            const wrapper = document.getElementById('chain-wrapper');
-            const targetWord = gameData.catena[currentAnchorIndex + 1];
+        // Meccanica di utilizzo del Jolly
+        function useJoker() {
+            const activeTeam = teams[currentTeamIndex];
+            const secretWord = gameData.catena[currentAnchorIndex + 1];
+
+            if (activeTeam.jokers <= 0) {
+                alert("Nessun Jolly rimasto per questa squadra!");
+                return;
+            }
+
+            if (lettersRevealedCount >= secretWord.length - 1) {
+                alert("Rimane solo una lettera da indovinare! Non puoi usare Jolly adesso.");
+                return;
+            }
+
+            // Consuma jolly e rivela una lettera
+            activeTeam.jokers--;
+            lettersRevealedCount++;
             
-            // Rivela completamente la parola prima di scorrere
+            updateScoreboard();
+            renderChainView();
+            alert(`Jolly Usato! È stata svelata una lettera aggiuntiva. Tocca ancora a "${activeTeam.name}" indovinare.`);
+        }
+
+        // Animazione corretta soluzione
+        function triggerSuccessAnimation() {
+            const targetWord = gameData.catena[currentAnchorIndex + 1];
+            const activeTeamName = teams[currentTeamIndex].name;
+            
             document.getElementById('node-mid').innerText = targetWord;
-            document.getElementById('node-mid').style.background = "#2ec4b6"; // Verde temporaneo di successo
+            document.getElementById('node-mid').style.background = "#2ec4b6"; // Luce verde successo
 
             setTimeout(() => {
-                // Avanzamento indici (salto di 2 unità: la parola indovinata diventa la nuova cima)
+                // Avanzamento indici della catena
                 currentAnchorIndex += 2;
                 lettersRevealedCount = 1;
 
-                // Controllo fine gioco
+                // Ripristino grafica originale
+                document.getElementById('node-mid').style.background = 'var(--orange-bubble)';
+
                 if (currentAnchorIndex + 1 >= gameData.catena.length) {
-                    teams[currentTeamIndex].score += currentPrize;
-                    updateScoreboard();
-                    alert(`🏆 Catena Completata! Spetta alla squadra ${teams[currentTeamIndex].name} incassare il montepremi di ${currentPrize.toLocaleString('it-IT')} €!`);
-                    resetToSetup();
+                    endGame();
                 } else {
-                    // Ripristina colore arancione e aggiorna la vista
-                    document.getElementById('node-mid').style.background = 'var(--orange-bubble)';
+                    alert(`Esatto! "${activeTeamName}" ha trovato la parola.\nLa catena avanza e il turno passa alla squadra successiva!`);
+                    nextTurn();
                     renderChainView();
                 }
-            }, 1200);
+            }, 1300);
         }
 
-        // Meccanica del "Dimezza"
-        function halvePrize() {
-            currentPrize = Math.ceil(currentPrize / 2);
-            document.getElementById('current-prize').innerText = currentPrize.toLocaleString('it-IT');
-        }
-
-        // Rivela una lettera extra della parola nascosta
-        function revealExtraLetter() {
-            const secretWord = gameData.catena[currentAnchorIndex + 1];
-            if(lettersRevealedCount < secretWord.length - 1) {
-                lettersRevealedCount++;
-                renderChainView();
+        // Avanzamento manuale senza vincitore diretto (se la parola viene rivelata del tutto)
+        function advanceChainDirectly() {
+            currentAnchorIndex += 2;
+            lettersRevealedCount = 1;
+            if (currentAnchorIndex + 1 >= gameData.catena.length) {
+                endGame();
             } else {
-                alert("Rimane solo l'ultima lettera da indovinare!");
+                nextTurn();
+                renderChainView();
             }
         }
 
-        // Forzatura / Rivela soluzione da Conduttore
-        function forceReveal() {
-            const correctSolution = gameData.catena[currentAnchorIndex + 1].toUpperCase();
-            alert(`La parola misteriosa era: ${correctSolution}`);
-            triggerSuccessAnimation();
-        }
-
-        // Gestione Turni Squadre
+        // Cambio turno manuale o automatico
         function nextTurn() {
             currentTeamIndex = (currentTeamIndex + 1) % teams.length;
             updateScoreboard();
         }
 
+        // Rivelazione forzata conduttore (Bypass)
+        function forceReveal() {
+            const correctSolution = gameData.catena[currentAnchorIndex + 1].toUpperCase();
+            const procedi = confirm(`Vuoi rivelare forzatamente la parola "${correctSolution}"?`);
+            if (procedi) {
+                advanceChainDirectly();
+            }
+        }
+
+        // Aggiornamento dello Scoreboard laterale
         function updateScoreboard() {
             const holder = document.getElementById('scoreboard');
             holder.innerHTML = '';
+            
             teams.forEach((t, idx) => {
                 const isActive = (idx === currentTeamIndex) ? 'active-turn' : '';
+                
+                // Crea visivamente i pallini dei Jolly
+                let jokersHTML = '';
+                for (let j = 0; j < 2; j++) {
+                    const isUsed = j >= t.jokers;
+                    jokersHTML += `<span class="joker-badge ${isUsed ? 'used' : ''}">J</span>`;
+                }
+
                 holder.innerHTML += `
                     <div class="team-score-card ${isActive}">
-                        <span>${t.name}</span>
-                        <strong>${t.score.toLocaleString('it-IT')} €</strong>
+                        <div>
+                            <span style="font-size: 1.15rem; font-weight: bold; display: block; color: #fff;">${t.name}</span>
+                            <div class="joker-container">${jokersHTML}</div>
+                        </div>
+                        <strong style="font-size: 1.4rem; color: #ff9100; text-shadow: 1px 1px 2px #000;">
+                            ${t.prize.toLocaleString('it-IT')} €
+                        </strong>
                     </div>
                 `;
             });
+            
+            // Aggiorna il montepremi in evidenza sulla destra (relativo al giocatore di turno)
+            if (teams[currentTeamIndex]) {
+                document.getElementById('current-prize').innerText = teams[currentTeamIndex].prize.toLocaleString('it-IT') + " €";
+            }
+        }
+
+        // Fine del gioco e calcolo del Vincitore
+        function endGame() {
+            let winner = teams[0];
+            let draw = false;
+            
+            for (let i = 1; i < teams.length; i++) {
+                if (teams[i].prize > winner.prize) {
+                    winner = teams[i];
+                    draw = false;
+                } else if (teams[i].prize === winner.prize) {
+                    draw = true;
+                }
+            }
+
+            let recap = "🏁 GIOCO FINITO!\n\nClassifica Finale:\n";
+            teams.forEach(t => {
+                recap += `- ${t.name}: ${t.prize.toLocaleString('it-IT')} €\n`;
+            });
+
+            if (draw) {
+                recap += "\nIncredibile! Abbiamo un pareggio sul gradino più alto del podio!";
+            } else {
+                recap += `\n🏆 COMPLIMENTI A: ${winner.name} che vince la manche!`;
+            }
+
+            alert(recap);
+            resetToSetup();
         }
 
         function resetToSetup() {
@@ -504,7 +697,7 @@
             document.getElementById('game-screen').style.display = 'none';
         }
 
-        // Invio tramite tasto Enter
+        // Tasto Enter per invio rapido
         document.getElementById('player-guess').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 checkAnswer();
