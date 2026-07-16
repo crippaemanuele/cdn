@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>L'Intesa Vincente - Tabellone</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            margin: 0; padding: 0; font-family: 'Arial', sans-serif;
+            background: radial-gradient(circle, #0044cc 0%, #000066 100%);
+            color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+        /* Decorazioni di sfondo (Cerchi) */
+        .bg-circle {
+            position: absolute; border: 15px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%; z-index: -1; pointer-events: none;
+        }
+        .setup-screen {
+            padding: 20px; background: rgba(0,0,0,0.8); height: 100%; z-index: 10;
+        }
+        .game-screen { display: none; flex-direction: column; height: 100%; position: relative; }
+        
+        .header-scores {
+            display: flex; justify-content: center; gap: 20px; padding: 20px;
+            font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.5);
+        }
+        .team-score-box { padding: 10px 20px; border-radius: 10px; }
+        .active-team { background: #ffcc00; color: black; }
+
+        .play-area {
+            flex-grow: 1; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 100px; gap: 10px;
+        }
+        
+        /* Stile Barre come da Immagine */
+        .box {
+            height: 80px; display: flex; align-items: center; justify-content: center;
+            font-size: 45px; font-weight: bold; border-radius: 40px; border: 3px solid #6699ff;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+        .score-box { width: 120px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        .word-box {
+            width: 500px; background: linear-gradient(to bottom, #32CD32, #008000); 
+            letter-spacing: 2px; transition: transform 0.2s;
+        }
+        .timer-box { width: 120px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        
+        .paused .word-box { background: linear-gradient(to bottom, #ff9900, #cc3300); animation: pulse 1s infinite; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .admin-controls {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; opacity: 0.2; transition: opacity 0.3s;
+        }
+        .admin-controls:hover { opacity: 1; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="bg-circle" style="width: 300px; height: 300px; top: 10%; left: 5%;"></div>
+    <div class="bg-circle" style="width: 500px; height: 500px; top: 30%; right: -5%;"></div>
+    <div class="bg-circle" style="width: 200px; height: 200px; bottom: 20%; left: 30%;"></div>
+
+    <div class="setup-screen" id="setup-screen">
+        <h1>Impostazioni Partita</h1>
+        <p>1. Carica il file JSON delle parole:</p>
+        <input type="file" id="json-upload" accept=".json"><br><br>
+        
+        <p>2. Nomi Squadre (separati da virgola):</p>
+        <input type="text" id="team-names" value="Squadra A, Squadra B" size="50"><br><br>
+        
+        <p>3. Codice per il Pulsante (Telefono): <strong id="peer-id-display" style="color:#ffcc00; font-size: 24px;">Generazione in corso...</strong></p>
+        <p>Apri <i>pulsante.html</i> sul telefono e inserisci questo codice.</p>
+        <button onclick="startGame()">Avvia Partita</button>
+    </div>
+
+    <div class="game-screen" id="game-screen">
+        <div class="header-scores" id="header-scores"></div>
+        
+        <div class="play-area" id="play-area">
+            <div class="box score-box" id="current-score">0</div>
+            <div class="box word-box" id="current-word">ATTESA...</div>
+            <div class="box timer-box" id="timer-display">:60</div>
+        </div>
+
+        <div class="admin-controls">
+            <button onclick="evaluateAnswer('correct')" style="background:#32cd32">Corretto (freccia SU)</button>
+            <button onclick="evaluateAnswer('wrong')" style="background:#cc3300">Sbagliato (freccia GIÙ)</button>
+            <button onclick="evaluateAnswer('jolly')" style="background:#ffcc00">Jolly (Spazio)</button>
+        </div>
+    </div>
+
+    <script>
+        let peer, conn;
+        let parole = [];
+        let teams = [];
+        let currentTeamIndex = 0;
+        let timerInterval;
+        let timeLeft = 60;
+        let isPaused = true;
+        let currentWordIndex = 0;
+        let jollies = 3;
+
+        // Inizializzazione PeerJS
+        peer = new Peer();
+        peer.on('open', function(id) {
+            document.getElementById('peer-id-display').innerText = id;
+        });
+        
+        peer.on('connection', function(connection) {
+            conn = connection;
+            conn.on('data', function(data) {
+                if(data.action === 'STOP') {
+                    pauseTimer();
+                }
+            });
+        });
+
+        // Gestione JSON
+        document.getElementById('json-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const json = JSON.parse(event.target.result);
+                parole = json.parole.sort(() => Math.random() - 0.5); // Mescola
+                alert("Parole caricate: " + parole.length);
+            };
+            reader.readAsText(file);
+        });
+
+        function startGame() {
+            if(parole.length === 0) return alert("Carica prima il JSON!");
+            
+            let names = document.getElementById('team-names').value.split(',').map(n => n.trim());
+            teams = names.map(name => ({ name: name, score: 0, currentRun: 0 }));
+            
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            updateHeader();
+            startTurn();
+        }
+
+        function updateHeader() {
+            const header = document.getElementById('header-scores');
+            header.innerHTML = '';
+            teams.forEach((t, index) => {
+                let div = document.createElement('div');
+                div.className = `team-score-box ${index === currentTeamIndex ? 'active-team' : ''}`;
+                div.innerText = `${t.name}: ${t.score}`;
+                header.appendChild(div);
+            });
+        }
+
+        function startTurn() {
+            timeLeft = 60;
+            jollies = 3; // 3 Jolly di default come nel programma
+            teams[currentTeamIndex].currentRun = 0;
+            updateUI();
+            nextWord();
+            isPaused = false;
+            document.getElementById('play-area').classList.remove('paused');
+            timerInterval = setInterval(tick, 1000);
+        }
+
+        function tick() {
+            if(!isPaused) {
+                timeLeft--;
+                updateUI();
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endTurn();
+                }
+            }
+        }
+
+        function pauseTimer() {
+            if(timeLeft > 0 && !isPaused) {
+                isPaused = true;
+                document.getElementById('play-area').classList.add('paused');
+                // Suono opzionale qui
+            }
+        }
+
+        function nextWord() {
+            if(currentWordIndex >= parole.length) parole = parole.sort(() => Math.random() - 0.5); // Rimescola se finite
+            document.getElementById('current-word').innerText = parole[currentWordIndex];
+            currentWordIndex++;
+        }
+
+        function evaluateAnswer(type) {
+            if(!isPaused) return; // Deve essere in pausa per valutare
+
+            if(type === 'correct') {
+                teams[currentTeamIndex].currentRun++;
+            } else if(type === 'wrong') {
+                teams[currentTeamIndex].currentRun = Math.max(0, teams[currentTeamIndex].currentRun - 1);
+            } else if(type === 'jolly') {
+                if(jollies > 0) { jollies--; } 
+                else { teams[currentTeamIndex].currentRun = Math.max(0, teams[currentTeamIndex].currentRun - 1); }
+            }
+            
+            nextWord();
+            isPaused = false;
+            document.getElementById('play-area').classList.remove('paused');
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('timer-display').innerText = `:${timeLeft.toString().padStart(2, '0')}`;
+            document.getElementById('current-score').innerText = teams[currentTeamIndex].currentRun;
+        }
+
+        function endTurn() {
+            teams[currentTeamIndex].score += teams[currentTeamIndex].currentRun;
+            alert(`Tempo scaduto! ${teams[currentTeamIndex].name} ha totalizzato ${teams[currentTeamIndex].currentRun} punti.`);
+            currentTeamIndex = (currentTeamIndex + 1) % teams.length;
+            updateHeader();
+            startTurn();
+        }
+
+        // Scorciatoie da tastiera per chi gestisce il PC
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'ArrowUp') evaluateAnswer('correct');
+            if(e.code === 'ArrowDown') evaluateAnswer('wrong');
+            if(e.code === 'Space') { e.preventDefault(); evaluateAnswer('jolly'); }
+        });
+    </script>
+</body>
+</html>
