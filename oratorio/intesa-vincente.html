@@ -3,82 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <title>L'Intesa Vincente - Tabellone</title>
+    <!-- Libreria per il P2P -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Libreria per generare il QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
-            margin: 0; padding: 0; font-family: 'Arial', sans-serif;
-            background: radial-gradient(circle, #0044cc 0%, #000066 100%);
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle, #0033aa 0%, #000044 100%);
             color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
         }
-        /* Decorazioni di sfondo (Cerchi) */
+        
+        /* Decorazioni di sfondo */
         .bg-circle {
-            position: absolute; border: 15px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%; z-index: -1; pointer-events: none;
+            position: absolute; border: 15px solid rgba(255, 255, 255, 0.05);
+            border-radius: 50%; z-index: 0; pointer-events: none;
         }
-        .setup-screen {
-            padding: 20px; background: rgba(0,0,0,0.8); height: 100%; z-index: 10;
+
+        /* --- STILI SCHERMATA CONFIGURAZIONE MIGLIORATA --- */
+        .setup-wrapper {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 10;
         }
-        .game-screen { display: none; flex-direction: column; height: 100%; position: relative; }
+        .setup-card {
+            background: rgba(0, 15, 60, 0.75); backdrop-filter: blur(15px);
+            padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 20px rgba(0, 150, 255, 0.3);
+            border: 1px solid rgba(255,255,255,0.1); width: 600px; text-align: center;
+        }
+        .setup-card h1 { margin-top: 0; color: #66b3ff; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .form-group { margin-bottom: 25px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #aaddff; }
+        
+        input[type="text"] {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #0055ff;
+            background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box;
+            outline: none; transition: border 0.3s;
+        }
+        input[type="text"]:focus { border-color: #66b3ff; background: rgba(255,255,255,0.15); }
+        
+        /* Custom File Upload */
+        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-upload-wrapper input[type="file"] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        .btn-upload {
+            display: block; width: 100%; padding: 12px; border-radius: 8px; background: #0044cc;
+            color: white; border: 1px solid #0055ff; text-align: center; cursor: pointer; font-size: 16px; box-sizing: border-box;
+            transition: background 0.3s;
+        }
+        .file-upload-wrapper:hover .btn-upload { background: #0055ff; }
+
+        .connection-box {
+            display: flex; align-items: center; justify-content: center; gap: 30px;
+            margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 12px;
+        }
+        .qr-container { padding: 10px; background: white; border-radius: 10px; }
+        .pin-container h3 { margin: 0 0 10px 0; font-size: 18px; color: #aaa; }
+        .pin-container .pin { font-size: 32px; color: #ffcc00; font-weight: bold; letter-spacing: 3px; }
+
+        .btn-start {
+            margin-top: 30px; padding: 15px 40px; font-size: 20px; font-weight: bold;
+            background: linear-gradient(135deg, #32cd32, #228b22); color: white; border: none;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 5px 15px rgba(50, 205, 50, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s; width: 100%;
+        }
+        .btn-start:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(50, 205, 50, 0.6); }
+
+        /* --- STILI GIOCO (Invariati / Lievemente ottimizzati) --- */
+        .game-screen { display: none; flex-direction: column; height: 100%; position: relative; z-index: 1; }
         
         .header-scores {
             display: flex; justify-content: center; gap: 20px; padding: 20px;
-            font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.5);
+            font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.5); border-bottom: 2px solid #0055ff;
         }
-        .team-score-box { padding: 10px 20px; border-radius: 10px; }
-        .active-team { background: #ffcc00; color: black; }
+        .team-score-box { padding: 10px 20px; border-radius: 10px; opacity: 0.5; transition: 0.3s; }
+        .active-team { background: #ffcc00; color: black; opacity: 1; box-shadow: 0 0 15px rgba(255, 204, 0, 0.5); }
 
-        .play-area {
-            flex-grow: 1; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 100px; gap: 10px;
-        }
+        .play-area { flex-grow: 1; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 80px; gap: 15px; }
         
-        /* Stile Barre come da Immagine */
         .box {
-            height: 80px; display: flex; align-items: center; justify-content: center;
-            font-size: 45px; font-weight: bold; border-radius: 40px; border: 3px solid #6699ff;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+            height: 90px; display: flex; align-items: center; justify-content: center;
+            font-size: 50px; font-weight: bold; border-radius: 45px; border: 3px solid #6699ff;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.6); text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
         }
-        .score-box { width: 120px; background: linear-gradient(to bottom, #0033cc, #001166); }
-        .word-box {
-            width: 500px; background: linear-gradient(to bottom, #32CD32, #008000); 
-            letter-spacing: 2px; transition: transform 0.2s;
-        }
-        .timer-box { width: 120px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        .score-box { width: 140px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        .word-box { width: 600px; background: linear-gradient(to bottom, #32CD32, #008000); letter-spacing: 2px; transition: 0.2s; }
+        .timer-box { width: 140px; background: linear-gradient(to bottom, #0033cc, #001166); }
         
         .paused .word-box { background: linear-gradient(to bottom, #ff9900, #cc3300); animation: pulse 1s infinite; }
         
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
 
         .admin-controls {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 10px; opacity: 0.2; transition: opacity 0.3s;
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; opacity: 0.1; transition: opacity 0.3s;
         }
         .admin-controls:hover { opacity: 1; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; }
+        .admin-controls button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="bg-circle" style="width: 300px; height: 300px; top: 10%; left: 5%;"></div>
-    <div class="bg-circle" style="width: 500px; height: 500px; top: 30%; right: -5%;"></div>
-    <div class="bg-circle" style="width: 200px; height: 200px; bottom: 20%; left: 30%;"></div>
+    <!-- Sfondo TV -->
+    <div class="bg-circle" style="width: 400px; height: 400px; top: 5%; left: -5%;"></div>
+    <div class="bg-circle" style="width: 600px; height: 600px; top: 40%; right: -10%;"></div>
+    <div class="bg-circle" style="width: 250px; height: 250px; bottom: 10%; left: 25%;"></div>
 
-    <div class="setup-screen" id="setup-screen">
-        <h1>Impostazioni Partita</h1>
-        <p>1. Carica il file JSON delle parole:</p>
-        <input type="file" id="json-upload" accept=".json"><br><br>
-        
-        <p>2. Nomi Squadre (separati da virgola):</p>
-        <input type="text" id="team-names" value="Squadra A, Squadra B" size="50"><br><br>
-        
-        <p>3. Codice per il Pulsante (Telefono): <strong id="peer-id-display" style="color:#ffcc00; font-size: 24px;">Generazione in corso...</strong></p>
-        <p>Apri <i>pulsante.html</i> sul telefono e inserisci questo codice.</p>
-        <button onclick="startGame()">Avvia Partita</button>
+    <!-- Schermata di Configurazione -->
+    <div class="setup-wrapper" id="setup-wrapper">
+        <div class="setup-card">
+            <h1>L'Intesa Vincente</h1>
+            
+            <div class="form-group">
+                <label>1. Carica il file JSON (parole)</label>
+                <div class="file-upload-wrapper">
+                    <span class="btn-upload" id="upload-label">Scegli file .json...</span>
+                    <input type="file" id="json-upload" accept=".json">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>2. Squadre (separate da virgola)</label>
+                <input type="text" id="team-names" value="Squadra A, Squadra B">
+            </div>
+            
+            <div class="connection-box">
+                <div class="qr-container" id="qrcode"></div>
+                <div class="pin-container">
+                    <h3>Inquadra per collegare il pulsante</h3>
+                    <p style="margin:5px 0;">oppure inserisci il PIN:</p>
+                    <div class="pin" id="peer-id-display">...</div>
+                </div>
+            </div>
+
+            <button class="btn-start" onclick="startGame()">AVVIA PARTITA</button>
+        </div>
     </div>
 
+    <!-- Schermata di Gioco -->
     <div class="game-screen" id="game-screen">
         <div class="header-scores" id="header-scores"></div>
         
@@ -89,9 +150,9 @@
         </div>
 
         <div class="admin-controls">
-            <button onclick="evaluateAnswer('correct')" style="background:#32cd32">Corretto (freccia SU)</button>
-            <button onclick="evaluateAnswer('wrong')" style="background:#cc3300">Sbagliato (freccia GIÙ)</button>
-            <button onclick="evaluateAnswer('jolly')" style="background:#ffcc00">Jolly (Spazio)</button>
+            <button onclick="evaluateAnswer('correct')" style="background:#32cd32; color:white">Corretto (Su)</button>
+            <button onclick="evaluateAnswer('wrong')" style="background:#cc3300; color:white">Sbagliato (Giù)</button>
+            <button onclick="evaluateAnswer('jolly')" style="background:#ffcc00; color:black">Jolly (Spazio)</button>
         </div>
     </div>
 
@@ -105,11 +166,25 @@
         let isPaused = true;
         let currentWordIndex = 0;
         let jollies = 3;
+        
+        // URL di base della tua GitHub Page
+        const pulsanteBaseUrl = "https://crippaemanuele.github.io/cdn/oratorio/intesa-vincente-pulsante.html";
 
         // Inizializzazione PeerJS
         peer = new Peer();
         peer.on('open', function(id) {
             document.getElementById('peer-id-display').innerText = id;
+            
+            // Generazione del QR Code
+            const connectUrl = `${pulsanteBaseUrl}?id=${id}`;
+            new QRCode(document.getElementById("qrcode"), {
+                text: connectUrl,
+                width: 120,
+                height: 120,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.L
+            });
         });
         
         peer.on('connection', function(connection) {
@@ -121,25 +196,32 @@
             });
         });
 
-        // Gestione JSON
+        // Gestione UI caricamento file
         document.getElementById('json-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
+            if(!file) return;
+            document.getElementById('upload-label').innerText = "Caricato: " + file.name;
+            document.getElementById('upload-label').style.background = "#32cd32";
+
             const reader = new FileReader();
             reader.onload = function(event) {
-                const json = JSON.parse(event.target.result);
-                parole = json.parole.sort(() => Math.random() - 0.5); // Mescola
-                alert("Parole caricate: " + parole.length);
+                try {
+                    const json = JSON.parse(event.target.result);
+                    parole = json.parole.sort(() => Math.random() - 0.5);
+                } catch(e) {
+                    alert("Errore nel file JSON!");
+                }
             };
             reader.readAsText(file);
         });
 
         function startGame() {
-            if(parole.length === 0) return alert("Carica prima il JSON!");
+            if(parole.length === 0) return alert("Devi prima caricare il file JSON delle parole!");
             
             let names = document.getElementById('team-names').value.split(',').map(n => n.trim());
             teams = names.map(name => ({ name: name, score: 0, currentRun: 0 }));
             
-            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('setup-wrapper').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
             updateHeader();
             startTurn();
@@ -158,7 +240,7 @@
 
         function startTurn() {
             timeLeft = 60;
-            jollies = 3; // 3 Jolly di default come nel programma
+            jollies = 3;
             teams[currentTeamIndex].currentRun = 0;
             updateUI();
             nextWord();
@@ -182,18 +264,17 @@
             if(timeLeft > 0 && !isPaused) {
                 isPaused = true;
                 document.getElementById('play-area').classList.add('paused');
-                // Suono opzionale qui
             }
         }
 
         function nextWord() {
-            if(currentWordIndex >= parole.length) parole = parole.sort(() => Math.random() - 0.5); // Rimescola se finite
+            if(currentWordIndex >= parole.length) parole = parole.sort(() => Math.random() - 0.5);
             document.getElementById('current-word').innerText = parole[currentWordIndex];
             currentWordIndex++;
         }
 
         function evaluateAnswer(type) {
-            if(!isPaused) return; // Deve essere in pausa per valutare
+            if(!isPaused) return;
 
             if(type === 'correct') {
                 teams[currentTeamIndex].currentRun++;
@@ -217,13 +298,12 @@
 
         function endTurn() {
             teams[currentTeamIndex].score += teams[currentTeamIndex].currentRun;
-            alert(`Tempo scaduto! ${teams[currentTeamIndex].name} ha totalizzato ${teams[currentTeamIndex].currentRun} punti.`);
+            alert(`Tempo scaduto!\n${teams[currentTeamIndex].name} ha totalizzato ${teams[currentTeamIndex].currentRun} punti.`);
             currentTeamIndex = (currentTeamIndex + 1) % teams.length;
             updateHeader();
             startTurn();
         }
 
-        // Scorciatoie da tastiera per chi gestisce il PC
         window.addEventListener('keydown', (e) => {
             if(e.code === 'ArrowUp') evaluateAnswer('correct');
             if(e.code === 'ArrowDown') evaluateAnswer('wrong');
