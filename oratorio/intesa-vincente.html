@@ -35,22 +35,30 @@
         .form-group { margin-bottom: 25px; text-align: left; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #aaddff; }
         
-        input[type="text"] {
+        input[type="text"], input[type="url"] {
             width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #0055ff;
             background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box;
             outline: none; transition: border 0.3s;
         }
-        input[type="text"]:focus { border-color: #66b3ff; background: rgba(255,255,255,0.15); }
+        input[type="text"]:focus, input[type="url"]:focus { border-color: #66b3ff; background: rgba(255,255,255,0.15); }
         
-        /* Custom File Upload */
+        /* Custom File Upload & URL Fetch */
+        .upload-options { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px dashed #0055ff; }
         .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
         .file-upload-wrapper input[type="file"] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
-        .btn-upload {
+        
+        .btn-action {
             display: block; width: 100%; padding: 12px; border-radius: 8px; background: #0044cc;
             color: white; border: 1px solid #0055ff; text-align: center; cursor: pointer; font-size: 16px; box-sizing: border-box;
             transition: background 0.3s;
         }
-        .file-upload-wrapper:hover .btn-upload { background: #0055ff; }
+        .file-upload-wrapper:hover .btn-action, .btn-action:hover { background: #0055ff; }
+
+        .url-fetch-container { display: flex; gap: 10px; margin-top: 10px; }
+        .url-fetch-container input { flex: 1; }
+        .url-fetch-container button { width: auto; padding: 0 20px; }
+
+        #upload-status { margin-top: 10px; font-size: 14px; font-weight: bold; text-align: center; height: 20px; }
 
         .connection-box {
             display: flex; align-items: center; justify-content: center; gap: 30px;
@@ -68,7 +76,7 @@
         }
         .btn-start:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(50, 205, 50, 0.6); }
 
-        /* --- STILI GIOCO (Invariati / Lievemente ottimizzati) --- */
+        /* --- STILI GIOCO --- */
         .game-screen { display: none; flex-direction: column; height: 100%; position: relative; z-index: 1; }
         
         .header-scores {
@@ -114,11 +122,24 @@
             <h1>L'Intesa Vincente</h1>
             
             <div class="form-group">
-                <label>1. Carica il file JSON (parole)</label>
-                <div class="file-upload-wrapper">
-                    <span class="btn-upload" id="upload-label">Scegli file .json...</span>
-                    <input type="file" id="json-upload" accept=".json">
+                <label>1. Carica le parole (Formato JSON)</label>
+                <div class="upload-options">
+                    <!-- Opzione File Locale -->
+                    <div class="file-upload-wrapper">
+                        <span class="btn-action" id="upload-label">📁 Scegli file dal PC...</span>
+                        <input type="file" id="json-upload" accept=".json">
+                    </div>
+                    
+                    <div style="text-align: center; margin: 10px 0; color: #66b3ff; font-weight: bold; font-size: 14px;">— OPPURE —</div>
+                    
+                    <!-- Opzione URL GitHub -->
+                    <div class="url-fetch-container">
+                        <input type="url" id="json-url" placeholder="🔗 Incolla link GitHub (.json)">
+                        <button type="button" class="btn-action" id="btn-fetch" onclick="fetchJsonFromUrl()">Scarica</button>
+                    </div>
                 </div>
+                <!-- Feedback visivo -->
+                <div id="upload-status"></div>
             </div>
             
             <div class="form-group">
@@ -175,48 +196,76 @@
         peer.on('open', function(id) {
             document.getElementById('peer-id-display').innerText = id;
             
-            // Generazione del QR Code
             const connectUrl = `${pulsanteBaseUrl}?id=${id}`;
             new QRCode(document.getElementById("qrcode"), {
-                text: connectUrl,
-                width: 120,
-                height: 120,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.L
+                text: connectUrl, width: 120, height: 120, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
             });
         });
         
         peer.on('connection', function(connection) {
             conn = connection;
             conn.on('data', function(data) {
-                if(data.action === 'STOP') {
-                    pauseTimer();
-                }
+                if(data.action === 'STOP') pauseTimer();
             });
         });
 
-        // Gestione UI caricamento file
+        // Feedback UI per i caricamenti
+        function setStatus(msg, color) {
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.innerText = msg;
+            statusDiv.style.color = color;
+        }
+
+        // 1. Caricamento File Locale
         document.getElementById('json-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(!file) return;
-            document.getElementById('upload-label').innerText = "Caricato: " + file.name;
-            document.getElementById('upload-label').style.background = "#32cd32";
-
+            
             const reader = new FileReader();
             reader.onload = function(event) {
                 try {
                     const json = JSON.parse(event.target.result);
+                    if(!json.parole || !Array.isArray(json.parole)) throw new Error("Formato non valido");
                     parole = json.parole.sort(() => Math.random() - 0.5);
+                    setStatus(`✅ Caricate ${parole.length} parole da file!`, '#32cd32');
                 } catch(e) {
-                    alert("Errore nel file JSON!");
+                    setStatus("❌ Errore nella lettura del file JSON!", '#ff4444');
                 }
             };
             reader.readAsText(file);
         });
 
+        // 2. Caricamento da URL (GitHub)
+        async function fetchJsonFromUrl() {
+            let url = document.getElementById('json-url').value.trim();
+            if (!url) return setStatus("⚠️ Inserisci un link valido", '#ffcc00');
+
+            // Converte un link standard di github nella sua versione RAW per permettere il fetch
+            if (url.includes("github.com") && url.includes("/blob/")) {
+                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
+            }
+
+            setStatus("⏳ Download in corso...", '#aaddff');
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Errore HTTP ${response.status}`);
+                
+                const json = await response.json();
+                if (!json.parole || !Array.isArray(json.parole)) throw new Error("Array 'parole' mancante nel JSON");
+
+                parole = json.parole.sort(() => Math.random() - 0.5);
+                setStatus(`✅ Scaricate ${parole.length} parole da URL!`, '#32cd32');
+                
+            } catch (error) {
+                setStatus(`❌ Errore download: ${error.message}`, '#ff4444');
+                console.error(error);
+            }
+        }
+
+        // Logica di Gioco (Avvio e turni)
         function startGame() {
-            if(parole.length === 0) return alert("Devi prima caricare il file JSON delle parole!");
+            if(parole.length === 0) return alert("Devi prima caricare le parole (da File o da URL)!");
             
             let names = document.getElementById('team-names').value.split(',').map(n => n.trim());
             teams = names.map(name => ({ name: name, score: 0, currentRun: 0 }));
