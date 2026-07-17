@@ -2,502 +2,362 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Ruota della Fortuna - Edizione Premium</title>
+    <title>L'Intesa Vincente - Tabellone</title>
+    <!-- Libreria per il P2P -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Libreria per generare il QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root {
-            --primary: #1565c0;
-            --primary-dark: #0d47a1;
-            --secondary: #ffca28;
-            --board-bg: #004d40;
-            --text-light: #ffffff;
-            --bg-color: #f0f4f8;
-        }
-
-        * { box-sizing: border-box; }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: #333;
-        }
-
-        h1 { color: var(--primary-dark); font-size: 2.5rem; margin-bottom: 1rem; text-align: center; text-transform: uppercase; letter-spacing: 2px; }
-
-        .panel {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 900px;
-            margin-bottom: 20px;
-        }
-
-        /* SCHERMATA DI SETUP */
-        #setup-screen { display: block; }
-        .setup-group { margin-bottom: 15px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input[type="number"], input[type="text"], input[type="file"] {
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle, #0033aa 0%, #000044 100%);
+            color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column;
         }
         
-        button {
-            background: var(--primary); color: white; padding: 12px 20px; border: none; border-radius: 6px;
-            font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s, transform 0.1s; width: 100%;
-        }
-        button:hover { background: var(--primary-dark); }
-        button:active { transform: scale(0.98); }
-        button:disabled { background: #999; cursor: not-allowed; transform: none; }
-        
-        .players-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
-
-        /* AREA DI GIOCO */
-        #game-container { display: none; grid-template-columns: 2fr 1fr; gap: 25px; max-width: 1200px; width: 100%; }
-
-        /* TABELLONE */
-        #board-section { background: var(--primary-dark); padding: 20px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 30px rgba(0,0,0,0.6); }
-        #category-display { background: var(--secondary); color: #333; font-weight: bold; font-size: 1.2rem; padding: 8px 25px; border-radius: 20px; margin-bottom: 20px; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        
-        #board { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; background: var(--board-bg); padding: 15px; border-radius: 8px; border: 4px solid #00251a; width: 100%; min-height: 150px; margin-bottom: 20px; }
-        .word { display: flex; gap: 5px; flex-wrap: nowrap; }
-        .cell { width: 45px; height: 60px; background: white; border: 2px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .cell.hidden { background: #00796b; border-color: #004d40; color: #00796b; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
-
-        /* TASTIERA SEPARATA (CONSONANTI E VOCALI) */
-        .keyboard-section { width: 100%; text-align: center; margin-bottom: 15px; }
-        .keyboard-title { font-size: 1rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
-        .keyboard-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-        
-        .key { padding: 12px 15px; font-size: 18px; font-weight: bold; background: #e0e0e0; color: #333; border: none; border-radius: 6px; box-shadow: 0 3px 0 #9e9e9e; width: 45px; }
-        .key:hover:not(:disabled) { background: #d5d5d5; transform: translateY(2px); box-shadow: 0 1px 0 #9e9e9e; }
-        .key:disabled { background: #4caf50; color: white; box-shadow: none; opacity: 0.5; transform: none; }
-        
-        /* Stile dedicato alle vocali */
-        .vowel-key { background: #81d4fa; box-shadow: 0 3px 0 #29b6f6; color: #01579b; }
-        .vowel-key:hover:not(:disabled) { background: #4fc3f7; }
-
-        /* SEZIONE DESTRA: RUOTA E GIOCATORI */
-        #side-section { display: flex; flex-direction: column; gap: 20px; }
-        
-        .wheel-container { background: white; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .wheel-pointer { width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #d32f2f; margin-bottom: -15px; z-index: 10; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
-        
-        #wheel-element {
-            width: 220px; height: 220px; border-radius: 50%; border: 6px solid #333;
-            background: conic-gradient(
-                #f44336 0deg 30deg, #e91e63 30deg 60deg, #9c27b0 60deg 90deg, 
-                #673ab7 90deg 120deg, #3f51b5 120deg 150deg, #2196f3 150deg 180deg, 
-                #03a9f4 180deg 210deg, #00bcd4 210deg 240deg, #009688 240deg 270deg, 
-                #4caf50 270deg 300deg, #8bc34a 300deg 330deg, #cddc39 330deg 360deg
-            );
-            transition: transform 4s cubic-bezier(0.14, 0.8, 0.25, 1);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-bottom: 20px;
+        /* Decorazioni di sfondo */
+        .bg-circle {
+            position: absolute; border: 15px solid rgba(255, 255, 255, 0.05);
+            border-radius: 50%; z-index: 0; pointer-events: none;
         }
 
-        #wheel-result { font-size: 1.2rem; font-weight: bold; min-height: 30px; margin-top: 10px; color: var(--primary-dark); text-align: center; }
+        /* --- STILI SCHERMATA CONFIGURAZIONE MIGLIORATA --- */
+        .setup-wrapper {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 10;
+        }
+        .setup-card {
+            background: rgba(0, 15, 60, 0.75); backdrop-filter: blur(15px);
+            padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 20px rgba(0, 150, 255, 0.3);
+            border: 1px solid rgba(255,255,255,0.1); width: 600px; text-align: center;
+        }
+        .setup-card h1 { margin-top: 0; color: #66b3ff; text-transform: uppercase; letter-spacing: 2px; }
         
-        .players-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .player-box { padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; transition: all 0.3s; }
-        .player-box.active { border-color: var(--secondary); background-color: #fff8e1; transform: scale(1.02); box-shadow: 0 4px 8px rgba(255, 202, 40, 0.3); font-weight: bold; }
-        .score-val { font-family: monospace; font-size: 1.3rem; color: var(--primary-dark); }
+        .form-group { margin-bottom: 25px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #aaddff; }
+        
+        input[type="text"], input[type="url"] {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #0055ff;
+            background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box;
+            outline: none; transition: border 0.3s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus { border-color: #66b3ff; background: rgba(255,255,255,0.15); }
+        
+        /* Custom File Upload & URL Fetch */
+        .upload-options { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; border: 1px dashed #0055ff; }
+        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-upload-wrapper input[type="file"] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        
+        .btn-action {
+            display: block; width: 100%; padding: 12px; border-radius: 8px; background: #0044cc;
+            color: white; border: 1px solid #0055ff; text-align: center; cursor: pointer; font-size: 16px; box-sizing: border-box;
+            transition: background 0.3s;
+        }
+        .file-upload-wrapper:hover .btn-action, .btn-action:hover { background: #0055ff; }
 
-        #game-status { padding: 15px; background: #e3f2fd; border-left: 4px solid var(--primary); border-radius: 4px; font-weight: bold; margin-top: 15px; line-height: 1.4; }
+        .url-fetch-container { display: flex; gap: 10px; margin-top: 10px; }
+        .url-fetch-container input { flex: 1; }
+        .url-fetch-container button { width: auto; padding: 0 20px; }
 
-        /* OVERLAY DI CAMBIO TURNO */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); display: none; justify-content: center; align-items: center; z-index: 1000; color: white; text-align: center; }
-        .overlay-content { background: #1a237e; padding: 40px; border-radius: 16px; border: 4px solid var(--secondary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 90%; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .overlay-content h2 { color: var(--secondary); font-size: 2.2rem; margin-top: 0; margin-bottom: 15px; text-transform: uppercase; }
-        .overlay-content p { font-size: 1.3rem; margin: 15px 0; line-height: 1.5; }
-        .next-player-badge { background: #4caf50; padding: 10px 20px; border-radius: 30px; font-size: 1.5rem; font-weight: bold; display: inline-block; margin: 15px 0 25px 0; }
-        .overlay-content button { background: var(--secondary); color: #333; font-size: 1.2rem; padding: 15px 30px; }
-        .overlay-content button:hover { background: #ffd54f; }
+        #upload-status { margin-top: 10px; font-size: 14px; font-weight: bold; text-align: center; height: 20px; }
 
-        /* CLASSIFICA FINALE */
-        #end-screen { display: none; text-align: center; }
-        .podium { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-        .podium-row { display: flex; justify-content: space-between; padding: 15px 25px; background: white; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .podium-row:nth-child(1) { background: #ffd700; color: #333; transform: scale(1.05); } 
-        .podium-row:nth-child(2) { background: #e0e0e0; color: #333; } 
-        .podium-row:nth-child(3) { background: #cd7f32; color: white; } 
+        .connection-box {
+            display: flex; align-items: center; justify-content: center; gap: 30px;
+            margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 12px;
+        }
+        .qr-container { padding: 10px; background: white; border-radius: 10px; }
+        .pin-container h3 { margin: 0 0 10px 0; font-size: 18px; color: #aaa; }
+        .pin-container .pin { font-size: 32px; color: #ffcc00; font-weight: bold; letter-spacing: 3px; }
 
-        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .btn-start {
+            margin-top: 30px; padding: 15px 40px; font-size: 20px; font-weight: bold;
+            background: linear-gradient(135deg, #32cd32, #228b22); color: white; border: none;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 5px 15px rgba(50, 205, 50, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s; width: 100%;
+        }
+        .btn-start:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(50, 205, 50, 0.6); }
 
-        @media (max-width: 800px) { #game-container { grid-template-columns: 1fr; } }
+        /* --- STILI GIOCO --- */
+        .game-screen { display: none; flex-direction: column; height: 100%; position: relative; z-index: 1; }
+        
+        .header-scores {
+            display: flex; justify-content: center; gap: 20px; padding: 20px;
+            font-size: 24px; font-weight: bold; background: rgba(0,0,0,0.5); border-bottom: 2px solid #0055ff;
+        }
+        .team-score-box { padding: 10px 20px; border-radius: 10px; opacity: 0.5; transition: 0.3s; }
+        .active-team { background: #ffcc00; color: black; opacity: 1; box-shadow: 0 0 15px rgba(255, 204, 0, 0.5); }
+
+        .play-area { flex-grow: 1; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 80px; gap: 15px; }
+        
+        .box {
+            height: 90px; display: flex; align-items: center; justify-content: center;
+            font-size: 50px; font-weight: bold; border-radius: 45px; border: 3px solid #6699ff;
+            box-shadow: 0 15px 25px rgba(0,0,0,0.6); text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+        .score-box { width: 140px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        .word-box { width: 600px; background: linear-gradient(to bottom, #32CD32, #008000); letter-spacing: 2px; transition: 0.2s; }
+        .timer-box { width: 140px; background: linear-gradient(to bottom, #0033cc, #001166); }
+        
+        .paused .word-box { background: linear-gradient(to bottom, #ff9900, #cc3300); animation: pulse 1s infinite; }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+        .admin-controls {
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; opacity: 0.1; transition: opacity 0.3s;
+        }
+        .admin-controls:hover { opacity: 1; }
+        .admin-controls button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>La Ruota della Fortuna</h1>
+    <!-- Sfondo TV -->
+    <div class="bg-circle" style="width: 400px; height: 400px; top: 5%; left: -5%;"></div>
+    <div class="bg-circle" style="width: 600px; height: 600px; top: 40%; right: -10%;"></div>
+    <div class="bg-circle" style="width: 250px; height: 250px; bottom: 10%; left: 25%;"></div>
 
-    <!-- SCHERMATA DI IMPOSTAZIONE -->
-    <div id="setup-screen" class="panel">
-        <h2>Impostazioni Partita</h2>
-        <div class="setup-group">
-            <label>Numero di Giocatori/Squadre (da 2 a 5):</label>
-            <input type="number" id="num-players" min="2" max="5" value="2" onchange="generaInputGiocatori()">
-        </div>
-        <div id="players-names-container" class="players-inputs"></div>
-        <div class="setup-group" style="margin-top: 20px;">
-            <label>Carica Set di Quesiti (File .json):</label>
-            <input type="file" id="file-input" accept=".json" onchange="gestisciCaricamentoFile(event)">
-        </div>
-        <button id="start-btn" onclick="avviaPartita()" style="background: #4caf50; font-size: 1.2rem; padding: 15px;" disabled>CARICA UN FILE PER AVVIARE</button>
-    </div>
-
-    <!-- SCHERMATA DI GIOCO -->
-    <div id="game-container">
-        <!-- Sinistra: Tabellone e Tastiera -->
-        <div id="board-section">
-            <h3 id="round-title" style="color: white; margin-top: 0;">Manche 1</h3>
-            <div id="category-display">CATEGORIA</div>
-            <div id="board"></div>
+    <!-- Schermata di Configurazione -->
+    <div class="setup-wrapper" id="setup-wrapper">
+        <div class="setup-card">
+            <h1>L'Intesa Vincente</h1>
             
-            <!-- TASTIERE SEPARATE -->
-            <div class="keyboard-section">
-                <div class="keyboard-title" style="color: white;">Consonanti (Gira la ruota per sceglierle)</div>
-                <div id="keyboard-consonants" class="keyboard-grid"></div>
+            <div class="form-group">
+                <label>1. Carica le parole (Formato JSON)</label>
+                <div class="upload-options">
+                    <!-- Opzione File Locale -->
+                    <div class="file-upload-wrapper">
+                        <span class="btn-action" id="upload-label">📁 Scegli file dal PC...</span>
+                        <input type="file" id="json-upload" accept=".json">
+                    </div>
+                    
+                    <div style="text-align: center; margin: 10px 0; color: #66b3ff; font-weight: bold; font-size: 14px;">— OPPURE —</div>
+                    
+                    <!-- Opzione URL GitHub -->
+                    <div class="url-fetch-container">
+                        <input type="url" id="json-url" placeholder="🔗 Incolla link GitHub (.json)">
+                        <button type="button" class="btn-action" id="btn-fetch" onclick="fetchJsonFromUrl()">Scarica</button>
+                    </div>
+                </div>
+                <!-- Feedback visivo -->
+                <div id="upload-status"></div>
             </div>
             
-            <div class="keyboard-section" style="margin-top: 10px;">
-                <div class="keyboard-title" style="color: var(--secondary);">Vocali (Acquistabili a 300 €)</div>
-                <div id="keyboard-vowels" class="keyboard-grid"></div>
-            </div>
-
-            <button onclick="risolviFrase()" style="background: #d32f2f; margin-top: 15px;">TENTA LA RISOLUZIONE DEL TABELLONE</button>
-        </div>
-
-        <!-- Destra: Ruota e Punteggi -->
-        <div id="side-section">
-            <div class="wheel-container">
-                <div class="wheel-pointer"></div>
-                <div id="wheel-element"></div>
-                <button id="spin-btn" onclick="giraRuota()">GIRA LA RUOTA</button>
-                <div id="wheel-result">Gira la ruota per iniziare!</div>
+            <div class="form-group">
+                <label>2. Squadre (separate da virgola)</label>
+                <input type="text" id="team-names" value="Squadra A, Squadra B">
             </div>
             
-            <div class="players-container" id="players-list"></div>
-            <div id="game-status">Attendiamo l'inizio...</div>
+            <div class="connection-box">
+                <div class="qr-container" id="qrcode"></div>
+                <div class="pin-container">
+                    <h3>Inquadra per collegare il pulsante</h3>
+                    <p style="margin:5px 0;">oppure inserisci il PIN:</p>
+                    <div class="pin" id="peer-id-display">...</div>
+                </div>
+            </div>
+
+            <button class="btn-start" onclick="startGame()">AVVIA PARTITA</button>
         </div>
     </div>
 
-    <!-- OVERLAY DI CAMBIO TURNO -->
-    <div id="turn-overlay" class="overlay">
-        <div class="overlay-content">
-            <h2>Cambio Turno!</h2>
-            <p id="overlay-reason">Motivo del cambio turno...</p>
-            <p>È il momento di passare la mano a:</p>
-            <div id="overlay-next-player" class="next-player-badge">Nome Giocatore</div>
-            <button onclick="chiudiOverlay()">CONTINUA IL GIOCO</button>
+    <!-- Schermata di Gioco -->
+    <div class="game-screen" id="game-screen">
+        <div class="header-scores" id="header-scores"></div>
+        
+        <div class="play-area" id="play-area">
+            <div class="box score-box" id="current-score">0</div>
+            <div class="box word-box" id="current-word">ATTESA...</div>
+            <div class="box timer-box" id="timer-display">:60</div>
         </div>
-    </div>
 
-    <!-- SCHERMATA FINALE -->
-    <div id="end-screen" class="panel">
-        <h2>Partita Conclusa!</h2>
-        <h3 style="color: #666;">Ecco la classifica finale:</h3>
-        <div id="podium" class="podium"></div>
-        <button onclick="location.reload()" style="margin-top: 30px; background: var(--primary);">GIOCA DI NUOVO</button>
+        <div class="admin-controls">
+            <button onclick="evaluateAnswer('correct')" style="background:#32cd32; color:white">Corretto (Su)</button>
+            <button onclick="evaluateAnswer('wrong')" style="background:#cc3300; color:white">Sbagliato (Giù)</button>
+            <button onclick="evaluateAnswer('jolly')" style="background:#ffcc00; color:black">Jolly (Spazio)</button>
+        </div>
     </div>
 
     <script>
-        // --- COSTANTI E VARIABILI GLOBALI ---
-        const spicchiRuota = [100, 200, 300, 400, 500, "PASSA", 600, 700, "BANCAROTTA", 800, 900, 1000];
-        const COSTO_VOCALE = 300; // Valore dedotto dal portafoglio
+        let peer, conn;
+        let parole = [];
+        let teams = [];
+        let currentTeamIndex = 0;
+        let timerInterval;
+        let timeLeft = 60;
+        let isPaused = true;
+        let currentWordIndex = 0;
+        let jollies = 3;
         
-        let players = [];
-        let questions = [];
-        let currentRound = 0;
-        let fraseCorrente = "";
-        let lettereIndovinate = [];
-        let currentPlayerIndex = 0;
-        let currentWheelRotation = 0;
-        let wheelValue = 0;
-        let hasSpun = false;
+        // URL di base della tua GitHub Page
+        const pulsanteBaseUrl = "https://crippaemanuele.github.io/cdn/oratorio/intesa-vincente-pulsante.html";
 
-        generaInputGiocatori();
+        // Inizializzazione PeerJS
+        peer = new Peer();
+        peer.on('open', function(id) {
+            document.getElementById('peer-id-display').innerText = id;
+            
+            const connectUrl = `${pulsanteBaseUrl}?id=${id}`;
+            new QRCode(document.getElementById("qrcode"), {
+                text: connectUrl, width: 120, height: 120, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
+            });
+        });
+        
+        peer.on('connection', function(connection) {
+            conn = connection;
+            conn.on('data', function(data) {
+                if(data.action === 'STOP') pauseTimer();
+            });
+        });
 
-        // --- SETUP ---
-        function generaInputGiocatori() {
-            const num = document.getElementById('num-players').value;
-            const container = document.getElementById('players-names-container');
-            container.innerHTML = "";
-            for(let i = 1; i <= num; i++) {
-                container.innerHTML += `<input type="text" id="player-name-${i}" placeholder="Nome Giocatore ${i}" value="Giocatore ${i}">`;
-            }
+        // Feedback UI per i caricamenti
+        function setStatus(msg, color) {
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.innerText = msg;
+            statusDiv.style.color = color;
         }
 
-        function gestisciCaricamentoFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        // 1. Caricamento File Locale
+        document.getElementById('json-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function(event) {
                 try {
-                    questions = JSON.parse(e.target.result);
-                    if(!Array.isArray(questions) || questions.length === 0) throw new Error("Lista vuota.");
-                    alert(`File caricato con successo! Rilevati ${questions.length} quesiti.`);
-                    const startBtn = document.getElementById('start-btn');
-                    startBtn.disabled = false;
-                    startBtn.innerText = "AVVIA LA PARTITA";
-                } catch(error) {
-                    alert("Errore: il file non è un file JSON valido.");
-                    event.target.value = "";
-                    document.getElementById('start-btn').disabled = true;
+                    const json = JSON.parse(event.target.result);
+                    if(!json.parole || !Array.isArray(json.parole)) throw new Error("Formato non valido");
+                    parole = json.parole.sort(() => Math.random() - 0.5);
+                    setStatus(`✅ Caricate ${parole.length} parole da file!`, '#32cd32');
+                } catch(e) {
+                    setStatus("❌ Errore nella lettura del file JSON!", '#ff4444');
                 }
             };
             reader.readAsText(file);
-        }
+        });
 
-        function avviaPartita() {
-            const num = document.getElementById('num-players').value;
-            players = [];
-            for(let i = 1; i <= num; i++) {
-                const name = document.getElementById(`player-name-${i}`).value.trim() || `Giocatore ${i}`;
-                players.push({ name: name, score: 0 });
+        // 2. Caricamento da URL (GitHub)
+        async function fetchJsonFromUrl() {
+            let url = document.getElementById('json-url').value.trim();
+            if (!url) return setStatus("⚠️ Inserisci un link valido", '#ffcc00');
+
+            // Converte un link standard di github nella sua versione RAW per permettere il fetch
+            if (url.includes("github.com") && url.includes("/blob/")) {
+                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
             }
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('game-container').style.display = 'grid';
-            creaInterfacciaGiocatori();
-            caricaManche(0);
-        }
 
-        function creaInterfacciaGiocatori() {
-            const list = document.getElementById('players-list');
-            list.innerHTML = "";
-            players.forEach((p, index) => {
-                list.innerHTML += `<div id="player-box-${index}" class="player-box">
-                    <span>${p.name}</span><span class="score-val" id="score-${index}">0 €</span>
-                </div>`;
-            });
-        }
-
-        // --- LOGICA GIOCO ---
-        function caricaManche(index) {
-            if(index >= questions.length) { mostraClassificaFinale(); return; }
-            currentRound = index;
-            fraseCorrente = questions[index].frase.toUpperCase();
-            document.getElementById('round-title').innerText = `Manche ${index + 1} di ${questions.length}`;
-            document.getElementById('category-display').innerText = questions[index].categoria.toUpperCase();
+            setStatus("⏳ Download in corso...", '#aaddff');
             
-            lettereIndovinate = [];
-            hasSpun = false;
-            wheelValue = 0;
-            
-            document.getElementById('wheel-result').innerText = "Tocca a " + players[currentPlayerIndex].name;
-            setStatus(`Inizia la manche! Gira la ruota o compra una vocale, ${players[currentPlayerIndex].name}.`);
-            
-            disegnaTabellone();
-            generaTastiera();
-            aggiornaUI();
-        }
-
-        function disegnaTabellone() {
-            const board = document.getElementById('board');
-            board.innerHTML = "";
-            const parole = fraseCorrente.split(" ");
-            
-            parole.forEach(parola => {
-                const wordDiv = document.createElement('div');
-                wordDiv.className = "word"; 
-                for(let char of parola) {
-                    let cell = document.createElement('div');
-                    if(/[A-Z]/.test(char)) {
-                        if(lettereIndovinate.includes(char)) {
-                            cell.className = "cell"; cell.innerText = char;
-                        } else {
-                            cell.className = "cell hidden"; cell.innerText = "";
-                        }
-                    } else {
-                        cell.className = "cell"; cell.innerText = char;
-                    }
-                    wordDiv.appendChild(cell);
-                }
-                board.appendChild(wordDiv);
-            });
-        }
-
-        // TASTIERE SEPARATE (CONSONANTI E VOCALI)
-        function generaTastiera() {
-            const consonantiCont = document.getElementById('keyboard-consonants');
-            const vocaliCont = document.getElementById('keyboard-vowels');
-            consonantiCont.innerHTML = "";
-            vocaliCont.innerHTML = "";
-            
-            const consonanti = "BCDFGHLMNPQRSTVZ".split("");
-            const vocali = "AEIOU".split("");
-            
-            // Crea bottoni consonanti
-            consonanti.forEach(let => {
-                let btn = document.createElement('button');
-                btn.className = "key";
-                btn.innerText = let;
-                btn.onclick = () => chiamaConsonante(let, btn);
-                consonantiCont.appendChild(btn);
-            });
-
-            // Crea bottoni vocali
-            vocali.forEach(let => {
-                let btn = document.createElement('button');
-                btn.className = "key vowel-key";
-                btn.innerText = let;
-                btn.onclick = () => compraVocale(let, btn);
-                vocaliCont.appendChild(btn);
-            });
-        }
-
-        function giraRuota() {
-            if(hasSpun) { alert("Hai già girato! Scegli una consonante."); return; }
-            const btn = document.getElementById('spin-btn');
-            btn.disabled = true;
-            document.getElementById('wheel-result').innerText = "Girando...";
-
-            const prizeIndex = Math.floor(Math.random() * spicchiRuota.length);
-            const degreesPerSegment = 360 / spicchiRuota.length;
-            const targetAngle = 360 - (prizeIndex * degreesPerSegment) - (degreesPerSegment / 2);
-            
-            const spins = 5 * 360; 
-            currentWheelRotation += spins + targetAngle - (currentWheelRotation % 360);
-            document.getElementById('wheel-element').style.transform = `rotate(${currentWheelRotation}deg)`;
-
-            const risultato = spicchiRuota[prizeIndex];
-
-            setTimeout(() => {
-                btn.disabled = false;
-                if(risultato === "BANCAROTTA") {
-                    document.getElementById('wheel-result').innerText = "BANCAROTTA!";
-                    players[currentPlayerIndex].score = 0;
-                    cambiaTurno("BANCAROTTA! Hai perso il montepremi.");
-                } else if(risultato === "PASSA") {
-                    document.getElementById('wheel-result').innerText = "PASSA IL TURNO!";
-                    cambiaTurno("Hai trovato PASSA IL TURNO.");
-                } else {
-                    document.getElementById('wheel-result').innerText = `Valore: ${risultato} €`;
-                    wheelValue = risultato;
-                    hasSpun = true;
-                    setStatus(`${players[currentPlayerIndex].name}, ora seleziona una CONSONANTE.`);
-                }
-                aggiornaUI();
-            }, 4100); 
-        }
-
-        // LOGICA CHIAMATA CONSONANTE
-        function chiamaConsonante(lettera, bottone) {
-            if(!hasSpun) {
-                alert("Per chiamare una consonante devi PRIMA girare la ruota!");
-                return;
-            }
-            
-            bottone.disabled = true;
-            hasSpun = false; 
-
-            if(fraseCorrente.includes(lettera)) {
-                lettereIndovinate.push(lettera);
-                const occorrenze = fraseCorrente.split(lettera).length - 1;
-                const guadagno = wheelValue * occorrenze;
-                players[currentPlayerIndex].score += guadagno;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Errore HTTP ${response.status}`);
                 
-                setStatus(`Bravo! La '${lettera}' c'è ${occorrenze} volta/e (+${guadagno} €). Tocca ancora a te!`);
-                disegnaTabellone();
-                aggiornaUI();
-                controllaFineAutomatica();
-            } else {
-                cambiaTurno(`La consonante '${lettera}' NON è presente.`);
-            }
-        }
+                const json = await response.json();
+                if (!json.parole || !Array.isArray(json.parole)) throw new Error("Array 'parole' mancante nel JSON");
 
-        // LOGICA ACQUISTO VOCALE
-        function compraVocale(lettera, bottone) {
-            if(hasSpun) {
-                alert("Hai già girato la ruota! Devi scegliere una consonante per il giro attuale.");
-                return;
-            }
-            if(players[currentPlayerIndex].score < COSTO_VOCALE) {
-                alert(`Non hai abbastanza saldo! Ti servono ${COSTO_VOCALE} € per comprare una vocale.`);
-                return;
-            }
-
-            // Sottrae il costo
-            players[currentPlayerIndex].score -= COSTO_VOCALE;
-            bottone.disabled = true;
-
-            if(fraseCorrente.includes(lettera)) {
-                lettereIndovinate.push(lettera);
-                const occorrenze = fraseCorrente.split(lettera).length - 1;
+                parole = json.parole.sort(() => Math.random() - 0.5);
+                setStatus(`✅ Scaricate ${parole.length} parole da URL!`, '#32cd32');
                 
-                setStatus(`Hai comprato la '${lettera}'. C'è ${occorrenze} volta/e! Tocca ancora a te.`);
-                disegnaTabellone();
-                aggiornaUI();
-                controllaFineAutomatica();
-            } else {
-                cambiaTurno(`Peccato, la vocale '${lettera}' NON c'è. Hai speso ${COSTO_VOCALE} € invano.`);
+            } catch (error) {
+                setStatus(`❌ Errore download: ${error.message}`, '#ff4444');
+                console.error(error);
             }
         }
 
-        function cambiaTurno(messaggioMotivo) {
-            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-            hasSpun = false;
-            mostraOverlayTurno(messaggioMotivo, players[currentPlayerIndex].name);
-            document.getElementById('wheel-result').innerText = `Tocca a ${players[currentPlayerIndex].name}.`;
-            setStatus(`${messaggioMotivo} Il turno passa a ${players[currentPlayerIndex].name}.`);
-            aggiornaUI();
+        // Logica di Gioco (Avvio e turni)
+        function startGame() {
+            if(parole.length === 0) return alert("Devi prima caricare le parole (da File o da URL)!");
+            
+            let names = document.getElementById('team-names').value.split(',').map(n => n.trim());
+            teams = names.map(name => ({ name: name, score: 0, currentRun: 0 }));
+            
+            document.getElementById('setup-wrapper').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            updateHeader();
+            startTurn();
         }
 
-        function mostraOverlayTurno(motivo, prossimoGiocatore) {
-            document.getElementById('overlay-reason').innerText = motivo;
-            document.getElementById('overlay-next-player').innerText = prossimoGiocatore;
-            document.getElementById('turn-overlay').style.display = 'flex';
-        }
-
-        function chiudiOverlay() { document.getElementById('turn-overlay').style.display = 'none'; }
-
-        function aggiornaUI() {
-            players.forEach((p, index) => {
-                document.getElementById(`score-${index}`).innerText = p.score + " €";
-                const box = document.getElementById(`player-box-${index}`);
-                if(index === currentPlayerIndex) box.classList.add('active');
-                else box.classList.remove('active');
+        function updateHeader() {
+            const header = document.getElementById('header-scores');
+            header.innerHTML = '';
+            teams.forEach((t, index) => {
+                let div = document.createElement('div');
+                div.className = `team-score-box ${index === currentTeamIndex ? 'active-team' : ''}`;
+                div.innerText = `${t.name}: ${t.score}`;
+                header.appendChild(div);
             });
         }
 
-        function setStatus(msg) { document.getElementById('game-status').innerText = msg; }
-
-        function controllaFineAutomatica() {
-            const lettereMancanti = fraseCorrente.replace(/[^A-Z]/g, "").split("").filter(char => !lettereIndovinate.includes(char));
-            if(lettereMancanti.length === 0) vittoriaManche();
+        function startTurn() {
+            timeLeft = 60;
+            jollies = 3;
+            teams[currentTeamIndex].currentRun = 0;
+            updateUI();
+            nextWord();
+            isPaused = false;
+            document.getElementById('play-area').classList.remove('paused');
+            timerInterval = setInterval(tick, 1000);
         }
 
-        function risolviFrase() {
-            const tentativo = prompt("Inserisci l'intera frase per risolvere:");
-            if(tentativo && tentativo.trim().toUpperCase() === fraseCorrente.replace(/[^A-Z\s]/g, "")) {
-                vittoriaManche();
-            } else if (tentativo !== null) {
-                alert("Sbagliato!");
-                cambiaTurno("Tentativo di risoluzione errato!");
+        function tick() {
+            if(!isPaused) {
+                timeLeft--;
+                updateUI();
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endTurn();
+                }
             }
         }
 
-        function vittoriaManche() {
-            const bonus = 1000;
-            players[currentPlayerIndex].score += bonus;
-            alert(`Esatto! ${players[currentPlayerIndex].name} vince e riceve un bonus di ${bonus} €!`);
-            caricaManche(currentRound + 1);
+        function pauseTimer() {
+            if(timeLeft > 0 && !isPaused) {
+                isPaused = true;
+                document.getElementById('play-area').classList.add('paused');
+            }
         }
 
-        function mostraClassificaFinale() {
-            document.getElementById('game-container').style.display = 'none';
-            document.getElementById('end-screen').style.display = 'block';
-            const classifica = [...players].sort((a, b) => b.score - a.score);
-            const podiumEl = document.getElementById('podium');
-            podiumEl.innerHTML = "";
-            classifica.forEach((p, i) => {
-                podiumEl.innerHTML += `<div class="podium-row"><span>${i + 1}° - ${p.name}</span><span>${p.score} €</span></div>`;
-            });
+        function nextWord() {
+            if(currentWordIndex >= parole.length) parole = parole.sort(() => Math.random() - 0.5);
+            document.getElementById('current-word').innerText = parole[currentWordIndex];
+            currentWordIndex++;
         }
+
+        function evaluateAnswer(type) {
+            if(!isPaused) return;
+
+            if(type === 'correct') {
+                teams[currentTeamIndex].currentRun++;
+            } else if(type === 'wrong') {
+                teams[currentTeamIndex].currentRun = Math.max(0, teams[currentTeamIndex].currentRun - 1);
+            } else if(type === 'jolly') {
+                if(jollies > 0) { jollies--; } 
+                else { teams[currentTeamIndex].currentRun = Math.max(0, teams[currentTeamIndex].currentRun - 1); }
+            }
+            
+            nextWord();
+            isPaused = false;
+            document.getElementById('play-area').classList.remove('paused');
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('timer-display').innerText = `:${timeLeft.toString().padStart(2, '0')}`;
+            document.getElementById('current-score').innerText = teams[currentTeamIndex].currentRun;
+        }
+
+        function endTurn() {
+            teams[currentTeamIndex].score += teams[currentTeamIndex].currentRun;
+            alert(`Tempo scaduto!\n${teams[currentTeamIndex].name} ha totalizzato ${teams[currentTeamIndex].currentRun} punti.`);
+            currentTeamIndex = (currentTeamIndex + 1) % teams.length;
+            updateHeader();
+            startTurn();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'ArrowUp') evaluateAnswer('correct');
+            if(e.code === 'ArrowDown') evaluateAnswer('wrong');
+            if(e.code === 'Space') { e.preventDefault(); evaluateAnswer('jolly'); }
+        });
     </script>
 </body>
 </html>
