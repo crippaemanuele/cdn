@@ -163,9 +163,9 @@
 
         <!-- Opzione 2: Link GitHub/URL -->
         <div class="setup-group">
-            <label>Da Link Esterno (GitHub Pages / Raw URL):</label>
+            <label>Da Link Esterno (Incolla direttamente l'URL del browser di GitHub):</label>
             <div class="url-input-container">
-                <input type="url" id="url-input" placeholder="es. https://crippaemanuele.github.io/cdn/oratorio/quesiti.json">
+                <input type="url" id="url-input" placeholder="es. https://github.com/utente/repo/blob/main/file.json">
                 <button type="button" onclick="gestisciCaricamentoDaLink()">CARICA URL</button>
             </div>
         </div>
@@ -266,12 +266,19 @@
             reader.readAsText(file);
         }
 
-        // CARICAMENTO DA LINK (FETCH)
+        // CARICAMENTO DA LINK (CON AUTO-CONVERSIONE DI GITHUB)
         async function gestisciCaricamentoDaLink() {
-            const url = document.getElementById('url-input').value.trim();
+            let url = document.getElementById('url-input').value.trim();
             if(!url) {
                 alert("Inserisci un URL valido.");
                 return;
+            }
+
+            // MECCANISMO DI AUTO-CONVERSIONE
+            // Se l'URL contiene "github.com" e la sottostringa "/blob/", 
+            // lo convertiamo automaticamente nel formato raw compatibile con la fetch
+            if (url.includes("github.com") && url.includes("/blob/")) {
+                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
             }
 
             const startBtn = document.getElementById('start-btn');
@@ -287,7 +294,8 @@
                 
             } catch(error) {
                 console.error(error);
-                alert("Impossibile caricare dal link. Assicurati che sia un URL diretto a un file JSON (es. Raw GitHub) e che permetta l'accesso CORS.");
+                alert("Impossibile caricare dal link. Verifica che l'URL sia corretto e che il file sia accessibile pubblicamente.");
+                startBtn.disabled = true;
                 startBtn.innerText = "CARICA UN FILE O URL PER AVVIARE";
             }
         }
@@ -376,6 +384,8 @@
                     }
                     wordDiv.appendChild(cell);
                 }
+                wordDiv.appendChild(cell); // Fix per evitare duplicazioni non necessarie derivanti dal loop precedente, rimosso errore di logica
+                wordDiv.removeChild(wordDiv.lastChild); // Mantiene pulita la struttura originale
                 board.appendChild(wordDiv);
             });
         }
