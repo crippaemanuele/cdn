@@ -76,10 +76,14 @@
         }
 
         .status-message {
-            margin-top: 8px;
+            margin-top: 12px;
             font-size: 0.95rem;
             color: #2ec4b6;
             font-weight: bold;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
         }
 
         button {
@@ -328,7 +332,7 @@
         }
 
         .team-inputs-container {
-            max-height: 250px;
+            max-height: 200px;
             overflow-y: auto;
             margin-bottom: 20px;
             padding-right: 5px;
@@ -344,13 +348,23 @@
 </head>
 <body>
 
+    <!-- SCHERMATA DI CONFIGURAZIONE INIZIALE -->
     <div id="setup-screen">
         <h1>Reazione a Catena</h1>
         
-        <div class="form-group">
-            <label for="json-file">Carica File JSON delle Catene:</label>
+        <div class="form-group" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+            <label for="json-file">Opzione 1: Carica File JSON locale</label>
             <input type="file" id="json-file" accept=".json">
-            <div id="file-status" class="status-message">Nessun file caricato. Verrà usata la catena di default.</div>
+            
+            <div style="text-align: center; margin: 10px 0; font-weight: bold; color: #ff9100; font-size: 0.9rem;">— OPPURE —</div>
+            
+            <label for="json-url">Opzione 2: Carica da link GitHub / URL Web</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="json-url" placeholder="Incolla il link del file .json...">
+                <button type="button" class="btn-action" style="border-radius: 8px; padding: 0 15px; font-size: 0.95rem;" onclick="loadJsonFromUrl()">Carica</button>
+            </div>
+            
+            <div id="file-status" class="status-message">Nessun file o link caricato. Verrà usata la catena di default.</div>
         </div>
 
         <div class="form-group">
@@ -360,18 +374,22 @@
 
         <h3 style="text-align: left; margin-bottom: 10px; color: #0093e9; font-size: 1.1rem;">Nomi Squadre e Montepremi Iniziali</h3>
         <div id="team-names-container" class="team-inputs-container">
-            </div>
+            <!-- Generato dinamicamente via Javascript -->
+        </div>
 
         <button class="btn-primary" onclick="startGame()">INIZIA IL TORNEO</button>
     </div>
 
+    <!-- SCHERMATA DI GIOCO -->
     <div id="game-screen">
         
+        <!-- PANNELLO SINISTRO: STATO DELLE SQUADRE IN GARA -->
         <div class="left-panel">
             <div class="panel-title">Squadre e Jolly</div>
             <div id="scoreboard"></div>
         </div>
 
+        <!-- PANNELLO CENTRALE: GRAFICA ATTIVA DELLA CATENA -->
         <div class="center-panel">
             <div id="manche-indicator">Manche 1 / 1</div>
             <div class="chain-container" id="chain-wrapper">
@@ -381,9 +399,11 @@
             </div>
             
             <div class="upcoming-list" id="upcoming-stack">
-                </div>
+                <!-- Mostra l'anteprima delle ancore inferiori residue -->
+            </div>
         </div>
 
+        <!-- PANNELLO DESTRO: CONTROLLI CONDUTTORE / INTERAZIONE -->
         <div class="right-panel">
             <div class="panel-title">Squadra Attiva</div>
             <div class="prize-capsule" id="current-prize">150.000 €</div>
@@ -409,10 +429,10 @@
             premiIniziali: 150000
         };
 
-        let loadedData = defaultData; // Conterrà l'intera struttura del JSON
-        let activeChainList = [];     // Array contenente tutte le catene da giocare in sequenza
-        let currentChainIndex = 0;    // Indice della manche/catena corrente
-        let gameData = null;          // La singola catena attiva al momento
+        let loadedData = defaultData; 
+        let activeChainList = [];     
+        let currentChainIndex = 0;    
+        let gameData = null;          
 
         let teams = [];
         let currentTeamIndex = 0;
@@ -437,24 +457,13 @@
         }
         generateTeamInputs();
 
-        // Lettura del file .json con supporto multimanche
+        // 1. Lettura da FileSystem locale
         document.getElementById('json-file').addEventListener('change', function(e) {
             const reader = new FileReader();
             reader.onload = function(event) {
                 try {
-                    const parsed = JSON.parse(event.target.result);
-                    
-                    if (parsed.catene_gioco && Array.isArray(parsed.catene_gioco)) {
-                        loadedData = parsed;
-                        document.getElementById('file-status').innerText = `✅ File caricato con successo! Rilevate ${parsed.catene_gioco.length} catene.`;
-                    } else if (parsed.catena && Array.isArray(parsed.catena)) {
-                        loadedData = { catene_gioco: [parsed], premiIniziali: parsed.premiIniziali || 150000 };
-                        document.getElementById('file-status').innerText = `✅ File caricato! Rilevata 1 catena singola.`;
-                    } else {
-                        alert("Formato file non valido. Assicurati che esista l'elenco 'catene_gioco'.");
-                        return;
-                    }
-                    generateTeamInputs();
+                    processJsonData(JSON.parse(event.target.result), "File locale");
+                    document.getElementById('json-url').value = ''; // Resetta campo URL
                 } catch(err) {
                     alert("Errore di sintassi nel file JSON. Controlla virgole e parentesi.");
                 }
@@ -462,7 +471,59 @@
             reader.readAsText(e.target.files[0]);
         });
 
-        // Avvio del Gioco (Configurazione Iniziale delle squadre)
+        // 2. NUOVO: Lettura da Link Web / GitHub con gestione automatica del Raw URL
+        function loadJsonFromUrl() {
+            let url = document.getElementById('json-url').value.trim();
+            if (!url) {
+                alert("Inserisci un link prima di premere Carica!");
+                return;
+            }
+
+            // Autocorrezione per i link standard di GitHub (da interfaccia web a file grezzo raw)
+            if (url.includes('github.com') && url.includes('/blob/')) {
+                url = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            }
+
+            const statusLabel = document.getElementById('file-status');
+            statusLabel.innerText = "⏳ Download del file in corso...";
+            statusLabel.style.color = "#ff9100";
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Status di rete: ${response.status}`);
+                    return response.json();
+                })
+                .then(parsed => {
+                    processJsonData(parsed, "Link Web/GitHub");
+                    document.getElementById('json-file').value = ''; // Resetta campo file locale
+                })
+                .catch(err => {
+                    statusLabel.innerText = "❌ Errore nel caricamento del link.";
+                    statusLabel.style.color = "#ff3333";
+                    alert(`Impossibile scaricare il file JSON.\n\nDettagli: ${err.message}\n\nSuggerimento: Verifica che il link sia corretto, pubblico e che non violi le regole CORS.`);
+                });
+        }
+
+        // Centralizza l'elaborazione e la validazione del JSON caricato
+        function processJsonData(parsed, sorgente) {
+            const statusLabel = document.getElementById('file-status');
+            
+            if (parsed.catene_gioco && Array.isArray(parsed.catene_gioco)) {
+                loadedData = parsed;
+                statusLabel.innerText = `✅ Caricato da ${sorgente}! Rilevate ${parsed.catene_gioco.length} catene.`;
+                statusLabel.style.color = "#2ec4b6";
+            } else if (parsed.catena && Array.isArray(parsed.catena)) {
+                loadedData = { catene_gioco: [parsed], premiIniziali: parsed.premiIniziali || 150000 };
+                statusLabel.innerText = `✅ Caricato da ${sorgente}! Rilevata 1 catena singola.`;
+                statusLabel.style.color = "#2ec4b6";
+            } else {
+                alert("Formato file non valido. Assicurati che esista l'elenco 'catene_gioco' o 'catena'.");
+                return;
+            }
+            generateTeamInputs();
+        }
+
+        // Avvio del Gioco
         function startGame() {
             activeChainList = loadedData.catene_gioco;
             currentChainIndex = 0;
@@ -472,7 +533,6 @@
                 return;
             }
 
-            // Inizializza le squadre solo all'inizio del torneo
             const count = parseInt(document.getElementById('team-count').value) || 2;
             teams = [];
             for(let i = 1; i <= count; i++) {
@@ -481,7 +541,7 @@
                 teams.push({
                     name: name,
                     prize: initialPrize,
-                    jokers: 2 // Assegnati per la prima manche
+                    jokers: 2
                 });
             }
 
@@ -491,25 +551,20 @@
             loadManche(currentChainIndex);
         }
 
-        // Caricamento di una specifica Manche/Catena
+        // Caricamento di una specifica Manche
         function loadManche(index) {
             gameData = activeChainList[index];
             currentAnchorIndex = 0;
             lettersRevealedCount = 1;
             
-            // Regola fondamentale: all'inizio di ogni nuova manche i Jolly si resettano a 2 per tutti!
             teams.forEach(t => t.jokers = 2);
 
-            // Se non è la prima manche, facciamo iniziare la squadra successiva rispetto a chi ha chiuso la precedente
-            // (oppure mantiene l'ordine alternato continuo)
-            
             updateScoreboard();
             renderChainView();
         }
 
         // Renderizzazione Grafica della Catena attiva
         function renderChainView() {
-            // Aggiorna indicatore di manche in alto
             document.getElementById('manche-indicator').innerText = `MANCHE ${currentChainIndex + 1} / ${activeChainList.length} • ${gameData.titolo || 'Senza Titolo'}`;
 
             const arr = gameData.catena;
@@ -526,14 +581,12 @@
             }
             document.getElementById('node-mid').innerText = displayedSecret;
 
-            // Anteprime nodi successivi
             const stackContainer = document.getElementById('upcoming-stack');
             stackContainer.innerHTML = '';
             for(let i = currentAnchorIndex + 4; i < arr.length; i += 2) {
                 stackContainer.innerHTML += `<div class="upcoming-node">${arr[i]}</div>`;
             }
 
-            // Aggiorna stato visivo del pulsante Jolly
             const activeTeam = teams[currentTeamIndex];
             const jokerBtn = document.getElementById('joker-btn');
             jokerBtn.innerText = `🌟 Usa Jolly (${activeTeam.jokers})`;
@@ -603,7 +656,6 @@
             alert(`Jolly speso! Rivelata una lettera in più. Tocca ancora a "${activeTeam.name}".`);
         }
 
-        // Animazioni di successo e passaggio turno
         function triggerSuccessAnimation() {
             const targetWord = gameData.catena[currentAnchorIndex + 1];
             const activeTeamName = teams[currentTeamIndex].name;
@@ -618,31 +670,27 @@
             }, 1300);
         }
 
-        // Gestisce l'avanzamento dei nodi o il cambio della manche
         function handleChainProgression() {
             currentAnchorIndex += 2;
             lettersRevealedCount = 1;
 
-            // Se la catena corrente è FINITA
             if (currentAnchorIndex + 1 >= gameData.catena.length) {
                 checkNextManche();
             } else {
-                // Se la catena continua, passa comunque il turno alla squadra successiva (come da tua regola)
                 nextTurn();
                 renderChainView();
             }
         }
 
-        // Controlla se ci sono altre catene da giocare nel torneo
         function checkNextManche() {
             currentChainIndex++;
             
             if (currentChainIndex < activeChainList.length) {
                 alert(`🎉 MANCHE COMPLETATA!\n\nPreparatevi... si passa alla prossima catena: \n"${activeChainList[currentChainIndex].titolo}"!\n\nI Jolly di tutte le squadre sono stati ricaricati a 2.`);
-                nextTurn(); // Passa alla squadra successiva per iniziare la nuova manche
+                nextTurn(); 
                 loadManche(currentChainIndex);
             } else {
-                endGame(); // Fine totale del torneo
+                endGame(); 
             }
         }
 
@@ -687,7 +735,6 @@
             }
         }
 
-        // Fine del torneo e proclamazione del vincitore finale
         function endGame() {
             let winner = teams[0];
             let draw = false;
@@ -719,7 +766,8 @@
         function resetToSetup() {
             document.getElementById('setup-screen').style.display = 'block';
             document.getElementById('game-screen').style.display = 'none';
-            document.getElementById('file-status').innerText = "Nessun file caricato. Verrà usata la catena di default.";
+            document.getElementById('file-status').innerText = "Nessun file o link caricato. Verrà usata la catena di default.";
+            document.getElementById('file-status').style.color = "#2ec4b6";
             loadedData = defaultData;
             generateTeamInputs();
         }
