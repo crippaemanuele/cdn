@@ -103,7 +103,11 @@
         "ROSSO",
         "TORO",
         "SEGNO",
-        "CROCE"
+        "CROCE",
+        "DAVIDE",
+        "RE",
+        "CASTELLO",
+        "CARTE"
       ]
     },
     {
@@ -117,7 +121,12 @@
         "DISEGNO",
         "LEGGE",
         "ORDINE",
-        "PULIZIA"
+        "PULIZIA",
+        "IMPRESA",
+        "VITTORIA",
+        "NIKE",
+        "VIRGOLA",
+        
       ]
     },
     {
@@ -131,7 +140,11 @@
         "SPERANZA",
         "LUCE",
         "FARI",
-        "NEBBIA"
+        "NEBBIA",
+        "MILANO",
+        "MARIO",
+        "IDRAULICO",
+        "SCARICO"
       ]
     },
     {
@@ -150,7 +163,11 @@
         "FILATO",
         "LANA",
         "PECORA",
-        "GREGGE"
+        "LUPO",
+        "ALBERTO",
+        "MONACO",
+        "TIBET",
+        "CINA"
       ]
     },
     {
@@ -164,7 +181,10 @@
         "AMLETO",
         "TESCHIO",
         "OSSO",
-        "CANE"
+        "CANE",
+        "CARLINO",
+        "RESTO",
+        "MANCIA"
       ]
     },
     {
@@ -178,7 +198,10 @@
         "CINQUE",
         "DITA",
         "MANO",
-        "GUANTO"
+        "GUANTO",
+        "SFIDA",
+        "CONFRONTO",
+        "FALO'"
       ]
     }
   ]
