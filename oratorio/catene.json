@@ -1,5 +1,5 @@
 {
-  "titolo_raccolta": "Reazione a Catena - 12 Catene",
+  "titolo_raccolta": "Reazione a Catena - 11 Catene",
   "premiIniziali": 150000,
   "catene_gioco": [
     {
@@ -125,8 +125,7 @@
         "IMPRESA",
         "VITTORIA",
         "NIKE",
-        "VIRGOLA",
-        
+        "VIRGOLA"
       ]
     },
     {
@@ -146,11 +145,6 @@
         "IDRAULICO",
         "SCARICO"
       ]
-    },
-    {
-      
-       
-    
     },
     {
       "titolo": "Catena 10 - Fuoco e Lana",
