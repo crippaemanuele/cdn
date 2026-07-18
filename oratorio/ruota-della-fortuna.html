@@ -43,7 +43,7 @@
         #setup-screen { display: block; }
         .setup-group { margin-bottom: 15px; }
         label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input[type="number"], input[type="text"], input[type="file"], input[type="url"] {
+        input[type="number"], input[type="text"], input[type="file"] {
             width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;
         }
         
@@ -56,14 +56,6 @@
         button:disabled { background: #999; cursor: not-allowed; transform: none; }
         
         .players-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
-        
-        .url-input-container { display: flex; gap: 10px; }
-        .url-input-container button { width: auto; padding: 10px 20px; white-space: nowrap; }
-        
-        .divider { text-align: center; margin: 20px 0; font-weight: bold; color: #888; position: relative; }
-        .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #ddd; }
-        .divider::before { left: 0; }
-        .divider::after { right: 0; }
 
         /* AREA DI GIOCO */
         #game-container { display: none; grid-template-columns: 2fr 1fr; gap: 25px; max-width: 1200px; width: 100%; }
@@ -77,7 +69,7 @@
         .cell { width: 45px; height: 60px; background: white; border: 2px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .cell.hidden { background: #00796b; border-color: #004d40; color: #00796b; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
 
-        /* TASTIERA SEPARATA */
+        /* TASTIERA SEPARATA (CONSONANTI E VOCALI) */
         .keyboard-section { width: 100%; text-align: center; margin-bottom: 15px; }
         .keyboard-title { font-size: 1rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
         .keyboard-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -86,6 +78,7 @@
         .key:hover:not(:disabled) { background: #d5d5d5; transform: translateY(2px); box-shadow: 0 1px 0 #9e9e9e; }
         .key:disabled { background: #4caf50; color: white; box-shadow: none; opacity: 0.5; transform: none; }
         
+        /* Stile dedicato alle vocali */
         .vowel-key { background: #81d4fa; box-shadow: 0 3px 0 #29b6f6; color: #01579b; }
         .vowel-key:hover:not(:disabled) { background: #4fc3f7; }
 
@@ -150,27 +143,11 @@
             <input type="number" id="num-players" min="2" max="5" value="2" onchange="generaInputGiocatori()">
         </div>
         <div id="players-names-container" class="players-inputs"></div>
-        
-        <div class="divider">CARICAMENTO QUESITI</div>
-
-        <!-- Opzione 1: File Locale -->
-        <div class="setup-group">
-            <label>Dal tuo dispositivo (File .json):</label>
+        <div class="setup-group" style="margin-top: 20px;">
+            <label>Carica Set di Quesiti (File .json):</label>
             <input type="file" id="file-input" accept=".json" onchange="gestisciCaricamentoFile(event)">
         </div>
-
-        <div class="divider">OPPURE</div>
-
-        <!-- Opzione 2: Link GitHub/URL -->
-        <div class="setup-group">
-            <label>Da Link Esterno (Incolla direttamente l'URL del browser di GitHub):</label>
-            <div class="url-input-container">
-                <input type="url" id="url-input" placeholder="es. https://github.com/utente/repo/blob/main/file.json">
-                <button type="button" onclick="gestisciCaricamentoDaLink()">CARICA URL</button>
-            </div>
-        </div>
-
-        <button id="start-btn" onclick="avviaPartita()" style="background: #4caf50; font-size: 1.2rem; padding: 15px; margin-top: 20px;" disabled>CARICA UN FILE O URL PER AVVIARE</button>
+        <button id="start-btn" onclick="avviaPartita()" style="background: #4caf50; font-size: 1.2rem; padding: 15px;" disabled>CARICA UN FILE PER AVVIARE</button>
     </div>
 
     <!-- SCHERMATA DI GIOCO -->
@@ -231,7 +208,7 @@
     <script>
         // --- COSTANTI E VARIABILI GLOBALI ---
         const spicchiRuota = [100, 200, 300, 400, 500, "PASSA", 600, 700, "BANCAROTTA", 800, 900, 1000];
-        const COSTO_VOCALE = 300; 
+        const COSTO_VOCALE = 300; // Valore dedotto dal portafoglio
         
         let players = [];
         let questions = [];
@@ -255,69 +232,25 @@
             }
         }
 
-        // CARICAMENTO DA FILE LOCALE
         function gestisciCaricamentoFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                elaboraJSON(e.target.result);
+                try {
+                    questions = JSON.parse(e.target.result);
+                    if(!Array.isArray(questions) || questions.length === 0) throw new Error("Lista vuota.");
+                    alert(`File caricato con successo! Rilevati ${questions.length} quesiti.`);
+                    const startBtn = document.getElementById('start-btn');
+                    startBtn.disabled = false;
+                    startBtn.innerText = "AVVIA LA PARTITA";
+                } catch(error) {
+                    alert("Errore: il file non è un file JSON valido.");
+                    event.target.value = "";
+                    document.getElementById('start-btn').disabled = true;
+                }
             };
             reader.readAsText(file);
-        }
-
-        // CARICAMENTO DA LINK (CON AUTO-CONVERSIONE DI GITHUB)
-        async function gestisciCaricamentoDaLink() {
-            let url = document.getElementById('url-input').value.trim();
-            if(!url) {
-                alert("Inserisci un URL valido.");
-                return;
-            }
-
-            // MECCANISMO DI AUTO-CONVERSIONE
-            // Se l'URL contiene "github.com" e la sottostringa "/blob/", 
-            // lo convertiamo automaticamente nel formato raw compatibile con la fetch
-            if (url.includes("github.com") && url.includes("/blob/")) {
-                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
-            }
-
-            const startBtn = document.getElementById('start-btn');
-            startBtn.innerText = "Caricamento in corso...";
-            startBtn.disabled = true;
-
-            try {
-                const response = await fetch(url);
-                if(!response.ok) throw new Error("Errore nel recupero del file di rete.");
-                
-                const dataText = await response.text();
-                elaboraJSON(dataText);
-                
-            } catch(error) {
-                console.error(error);
-                alert("Impossibile caricare dal link. Verifica che l'URL sia corretto e che il file sia accessibile pubblicamente.");
-                startBtn.disabled = true;
-                startBtn.innerText = "CARICA UN FILE O URL PER AVVIARE";
-            }
-        }
-
-        // FUNZIONE COMUNE PER IL PARSING
-        function elaboraJSON(jsonString) {
-            try {
-                const parsed = JSON.parse(jsonString);
-                if(!Array.isArray(parsed) || parsed.length === 0) throw new Error("Lista vuota o non valida.");
-                
-                questions = parsed;
-                alert(`Quesiti caricati con successo! Rilevati ${questions.length} quesiti.`);
-                
-                const startBtn = document.getElementById('start-btn');
-                startBtn.disabled = false;
-                startBtn.innerText = "AVVIA LA PARTITA";
-                
-            } catch(error) {
-                alert("Errore: il contenuto caricato non è un file JSON valido o è formattato male.");
-                document.getElementById('start-btn').disabled = true;
-                document.getElementById('start-btn').innerText = "CARICA UN FILE O URL PER AVVIARE";
-            }
         }
 
         function avviaPartita() {
@@ -384,13 +317,11 @@
                     }
                     wordDiv.appendChild(cell);
                 }
-                wordDiv.appendChild(cell); // Fix per evitare duplicazioni non necessarie derivanti dal loop precedente, rimosso errore di logica
-                wordDiv.removeChild(wordDiv.lastChild); // Mantiene pulita la struttura originale
                 board.appendChild(wordDiv);
             });
         }
 
-        // TASTIERE SEPARATE
+        // TASTIERE SEPARATE (CONSONANTI E VOCALI)
         function generaTastiera() {
             const consonantiCont = document.getElementById('keyboard-consonants');
             const vocaliCont = document.getElementById('keyboard-vowels');
@@ -400,16 +331,20 @@
             const consonanti = "BCDFGHLMNPQRSTVZ".split("");
             const vocali = "AEIOU".split("");
             
+            // Crea bottoni consonanti
             consonanti.forEach(let => {
                 let btn = document.createElement('button');
-                btn.className = "key"; btn.innerText = let;
+                btn.className = "key";
+                btn.innerText = let;
                 btn.onclick = () => chiamaConsonante(let, btn);
                 consonantiCont.appendChild(btn);
             });
 
+            // Crea bottoni vocali
             vocali.forEach(let => {
                 let btn = document.createElement('button');
-                btn.className = "key vowel-key"; btn.innerText = let;
+                btn.className = "key vowel-key";
+                btn.innerText = let;
                 btn.onclick = () => compraVocale(let, btn);
                 vocaliCont.appendChild(btn);
             });
@@ -450,8 +385,12 @@
             }, 4100); 
         }
 
+        // LOGICA CHIAMATA CONSONANTE
         function chiamaConsonante(lettera, bottone) {
-            if(!hasSpun) { alert("Devi PRIMA girare la ruota!"); return; }
+            if(!hasSpun) {
+                alert("Per chiamare una consonante devi PRIMA girare la ruota!");
+                return;
+            }
             
             bottone.disabled = true;
             hasSpun = false; 
@@ -471,13 +410,18 @@
             }
         }
 
+        // LOGICA ACQUISTO VOCALE
         function compraVocale(lettera, bottone) {
-            if(hasSpun) { alert("Hai girato la ruota! Devi scegliere una consonante."); return; }
+            if(hasSpun) {
+                alert("Hai già girato la ruota! Devi scegliere una consonante per il giro attuale.");
+                return;
+            }
             if(players[currentPlayerIndex].score < COSTO_VOCALE) {
-                alert(`Saldo insufficiente. Costo vocale: ${COSTO_VOCALE} €.`);
+                alert(`Non hai abbastanza saldo! Ti servono ${COSTO_VOCALE} € per comprare una vocale.`);
                 return;
             }
 
+            // Sottrae il costo
             players[currentPlayerIndex].score -= COSTO_VOCALE;
             bottone.disabled = true;
 
@@ -485,12 +429,12 @@
                 lettereIndovinate.push(lettera);
                 const occorrenze = fraseCorrente.split(lettera).length - 1;
                 
-                setStatus(`Hai comprato la '${lettera}'. C'è ${occorrenze} volta/e! Tocca a te.`);
+                setStatus(`Hai comprato la '${lettera}'. C'è ${occorrenze} volta/e! Tocca ancora a te.`);
                 disegnaTabellone();
                 aggiornaUI();
                 controllaFineAutomatica();
             } else {
-                cambiaTurno(`Peccato, la '${lettera}' NON c'è. Hai speso ${COSTO_VOCALE} € invano.`);
+                cambiaTurno(`Peccato, la vocale '${lettera}' NON c'è. Hai speso ${COSTO_VOCALE} € invano.`);
             }
         }
 
