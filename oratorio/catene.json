@@ -10,7 +10,7 @@
         "PRETE",
         "MINISTRO",
         "SALUTE",
-        "SCOPPIO",
+        "SCOPPIARE",
         "BOOM",
         "ECONOMICO",
         "DIEGO",
@@ -23,6 +23,8 @@
     {
       "titolo": "Catena 2 - Natura e Notte",
       "catena": [
+        "PARAMENTO",
+        "PIANETA",
         "TERRA",
         "SOLE",
         "GIAPPONE",
@@ -31,7 +33,9 @@
         "CARICA",
         "101",
         "ZOEY",
-        "KPOP DEMON HUNTER"
+        "KPOP DEMON HUNTER",
+        "GOLDEN",
+        "MILK"
       ]
     },
     {
@@ -45,7 +49,11 @@
         "NAVIGAZIONE",
         "RETE",
         "PESCE",
-        "SPADA"
+        "SPADA",
+        "ROCCIA",
+        "VECCHIA",
+        "SARA",
+        "GAMA"
       ]
     },
     {
